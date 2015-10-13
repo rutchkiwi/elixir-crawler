@@ -3,12 +3,12 @@ defmodule Crawler.Mixfile do
 
   def project do
     [app: :crawler,
-     version: "0.0.1",
-     elixir: "~> 1.0",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     escript: [main_module: Crawler.CLI],
-     deps: deps]
+    version: "0.0.1",
+    elixir: "~> 1.0",
+    build_embedded: Mix.env == :prod,
+    start_permanent: Mix.env == :prod,
+    escript: [main_module: Crawler.CLI],
+    deps: deps]
   end
 
   # Configuration for the OTP application
@@ -28,6 +28,9 @@ defmodule Crawler.Mixfile do
   #
   # Type `mix help deps` for more examples and options
   defp deps do
-    [{:httpoison, "~> 0.7.2"}]
+    [
+      {:httpoison, "~> 0.7.2"},
+      {:floki, "~> 0.6"}
+    ]
   end
 end
