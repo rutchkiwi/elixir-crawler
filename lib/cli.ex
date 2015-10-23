@@ -1,8 +1,7 @@
 defmodule Crawler.CLI do
   def main([url]) do
-    {:ok, resp} = HTTPoison.get(url)
-    body = resp.body
-    IO.puts body
+    urls = Crawler.Main.start(&HttpFetcher.fetch/1, url)
+    IO.puts "found urls #{inspect(urls)}"
   end
 end
 
@@ -32,9 +31,10 @@ defmodule Crawler.Main do
 			body = fetcher_func.(url)
 			if body == nil do
 				crawl(fetcher_func, visited, rest)
-			else	
+			else
+				IO.inspect(body)	
 				links = HtmlParser.get_links(body)
-				crawl(fetcher_func, Set.put(visited, url), [rest | links])
+				crawl(fetcher_func, Set.put(visited, url), rest ++ links)
 			end
 		end
 	end
@@ -46,6 +46,17 @@ defmodule HtmlParser do
 	end
 
 	def get_links(body) do
+		IO.puts "parsing body #{body}"
 		Floki.attribute(body, "a", "href")
+	end
+end
+
+defmodule HttpFetcher do
+	def fetch(url) do
+		IO.puts "fetching url #{inspect(url)}"
+		case HTTPoison.get(url) do
+			{:ok, resp} -> resp.body
+			{:error, _} -> nil
+		end
 	end
 end
