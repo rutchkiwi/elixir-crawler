@@ -8,14 +8,10 @@ end
 
 defmodule Crawler.Main do
 	def crawl(fetcher_func, url) do
-		IO.puts "============="
 		body = fetcher_func.(url)
 		links = HtmlParser.get_links(body)
-		IO.inspect(links)
 		rest = Enum.map(links, &crawl(fetcher_func, &1))
-		to_return = [url | rest]
-		IO.puts("to return: [#{url} | #{inspect(rest)} ]")
-		List.flatten(to_return) #TODO: wierd
+		[url | List.flatten(rest)]
 	end
 end
 
