@@ -15,19 +15,33 @@ defmodule CrawlingTest do
     pages[url]
   end
 
+  test "empty" do
+    res = Crawler.Main.start(&fake_fetcher_func/1, "http://non-existant.com")
+    expected = HashSet.new
+    assert expected == res
+  end
 
   test "smoketest" do
-  	res = Crawler.Main.crawl(&fake_fetcher_func/1, "http://b.com")
-  	assert ["http://b.com"] == res
+  	res = Crawler.Main.start(&fake_fetcher_func/1, "http://b.com")
+    expected = HashSet.new
+    expected = Set.put(expected, "http://b.com")
+  	assert expected == res
   end
 
   test "simple" do
-  	res = Crawler.Main.crawl(&fake_fetcher_func/1, "http://a.com")
-  	assert ["http://a.com", "http://b.com"] == res
+  	res = Crawler.Main.start(&fake_fetcher_func/1, "http://a.com")
+    expected = HashSet.new
+    expected = Set.put(expected, "http://a.com")
+    expected = Set.put(expected, "http://b.com")
+    assert expected == res
   end
 
   test "loop" do
-    res = Crawler.Main.crawl(&fake_fetcher_func/1, "http://loop.com")
-    assert ["http://loop.com", "http://a.com", "http://b.com"] == res
+    res = Crawler.Main.start(&fake_fetcher_func/1, "http://loop.com")
+    expected = HashSet.new
+    expected = Set.put(expected, "http://loop.com")
+    expected = Set.put(expected, "http://a.com")
+    expected = Set.put(expected, "http://b.com")
+    assert expected == res
   end
 end
