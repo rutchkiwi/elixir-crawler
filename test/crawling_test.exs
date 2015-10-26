@@ -4,13 +4,15 @@ defmodule CrawlingTest do
 
   def fake_fetcher_func(url) do
    pages = %{
-    "http://a.com" =>
-      ~s(<a href="http://b.com"></a>),
-    "http://b.com" =>
+    "http://a.com/a" =>
+      ~s(<a href="http://a.com/b"></a>),
+    "http://a.com/b" =>
       ~s(<h1> end of line! </h1>),
-    "http://loop.com" =>
-      ~s(<a href="http://loop.com"></a>
-        <a href="http://a.com"></a>)
+    "http://a.com/rel" =>
+      ~s(<a href="/b"></a>),
+    "http://a.com/loop" =>
+      ~s(<a href="http://a.com/loop"></a>
+        <a href="http://a.com/a"></a>)
     }
     pages[url]
   end
@@ -22,26 +24,34 @@ defmodule CrawlingTest do
   end
 
   test "smoketest" do
-  	res = Crawler.Main.start(&fake_fetcher_func/1, "http://b.com")
+  	res = Crawler.Main.start(&fake_fetcher_func/1, "http://a.com/b")
     expected = HashSet.new
-    expected = Set.put(expected, "http://b.com")
+    expected = Set.put(expected, "http://a.com/b")
   	assert expected == res
   end
 
   test "simple" do
-  	res = Crawler.Main.start(&fake_fetcher_func/1, "http://a.com")
+  	res = Crawler.Main.start(&fake_fetcher_func/1, "http://a.com/a")
     expected = HashSet.new
-    expected = Set.put(expected, "http://a.com")
-    expected = Set.put(expected, "http://b.com")
+    expected = Set.put(expected, "http://a.com/a")
+    expected = Set.put(expected, "http://a.com/b")
     assert expected == res
   end
 
   test "loop" do
-    res = Crawler.Main.start(&fake_fetcher_func/1, "http://loop.com")
+    res = Crawler.Main.start(&fake_fetcher_func/1, "http://a.com/loop")
     expected = HashSet.new
-    expected = Set.put(expected, "http://loop.com")
-    expected = Set.put(expected, "http://a.com")
-    expected = Set.put(expected, "http://b.com")
+    expected = Set.put(expected, "http://a.com/loop")
+    expected = Set.put(expected, "http://a.com/a")
+    expected = Set.put(expected, "http://a.com/b")
+    assert expected == res
+  end
+
+  test "relative" do
+    res = Crawler.Main.start(&fake_fetcher_func/1, "http://a.com/rel")
+    expected = HashSet.new
+    expected = Set.put(expected, "http://a.com/rel")
+    expected = Set.put(expected, "http://a.com/b")
     assert expected == res
   end
 end
