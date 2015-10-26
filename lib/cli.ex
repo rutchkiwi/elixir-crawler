@@ -1,8 +1,8 @@
 defmodule Crawler.CLI do
-  def main([url]) do
-    urls = Crawler.Main.start(&HttpFetcher.fetch/1, url)
-    IO.puts "found urls #{inspect(urls)}"
-  end
+	def main([url]) do
+		urls = Crawler.Main.start(&HttpFetcher.fetch/1, url)
+		IO.puts "found urls #{inspect(urls)}"
+	end
 end
 
 # defmodule Crawler.Main do
@@ -30,15 +30,22 @@ defmodule Crawler.Main do
 
 	def crawl(fetcher_func, visited, queue, host) do
 		[uri | rest] = queue
-		# IO.puts "host #{host} uri path #{inspect(uri.path)}"
+
+		if uri.path == nil do
+			# ignore this url
+			crawl(fetcher_func, visited, rest, host)	
+		end
+
 		if uri.host == nil and String.starts_with?(uri.path, "/") do
 			uri = %{uri | host: host}
+			if uri.scheme == nil do
+				uri = %{uri | scheme: "http"}
+			end
 		end
-		if uri.scheme == nil do
-			uri = %{uri | scheme: "http"}
-		end
-		if Set.member?(visited, URI.to_string(uri)) do
+
+		if Set.member?(visited, URI.to_string(uri)) or uri.host != host do
 			# IO.puts("already visited #{uri}")
+			# ignore this url
 			crawl(fetcher_func, visited, rest, host)	
 		else
 			body = fetcher_func.(URI.to_string(uri))
