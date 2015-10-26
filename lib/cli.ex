@@ -15,26 +15,41 @@ end
 # end
 
 defmodule Crawler.Main do
-	def start(fetcher, url) do
-		crawl(fetcher, HashSet.new, [url])
+
+	require IEx
+
+	def start(fetcher, url_string) do
+		uri = URI.parse(url_string)
+		host = uri.host
+		crawl(fetcher, HashSet.new, [uri], host)
 	end
 
-	def crawl(_, visited, []) do
+	def crawl(_, visited, [], _) do
 		visited
 	end
 
-	def crawl(fetcher_func, visited, queue) do
-		[url | rest] = queue
-		if Set.member?(visited, url) do
-			crawl(fetcher_func, visited, rest)	
+	def crawl(fetcher_func, visited, queue, host) do
+		[uri | rest] = queue
+		# IO.puts "host #{host} uri path #{inspect(uri.path)}"
+		if uri.host == nil and String.starts_with?(uri.path, "/") do
+			uri = %{uri | host: host}
+		end
+		if uri.scheme == nil do
+			uri = %{uri | scheme: "http"}
+		end
+		if Set.member?(visited, URI.to_string(uri)) do
+			# IO.puts("already visited #{uri}")
+			crawl(fetcher_func, visited, rest, host)	
 		else
-			body = fetcher_func.(url)
+			body = fetcher_func.(URI.to_string(uri))
 			if body == nil do
-				crawl(fetcher_func, visited, rest)
+				# IO.puts("body was nil for #{inspect(uri)}")
+				crawl(fetcher_func, visited, rest, host)
 			else
-				IO.inspect(body)	
-				links = HtmlParser.get_links(body)
-				crawl(fetcher_func, Set.put(visited, url), rest ++ links)
+				link_url_strings = HtmlParser.get_links(body)
+				link_uris = Enum.map(link_url_strings, &URI.parse/1)
+				# IO.inspect(link_uris)	
+				crawl(fetcher_func, Set.put(visited, URI.to_string(uri)), rest ++ link_uris, host)
 			end
 		end
 	end
@@ -46,7 +61,7 @@ defmodule HtmlParser do
 	end
 
 	def get_links(body) do
-		IO.puts "parsing body #{body}"
+		# IO.puts "parsing body #{body}"
 		Floki.attribute(body, "a", "href")
 	end
 end
