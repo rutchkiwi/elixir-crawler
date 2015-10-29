@@ -1,7 +1,8 @@
 defmodule Crawler.CLI do
-	def main([url]) do
+	def main([url, max_count_str]) do
 		{_, tic, _} = :os.timestamp
-		urls = Crawler.Main.start(&HttpFetcher.fetch/1, url)
+		{max_count, ""} = Integer.parse(max_count_str)
+		urls = Crawler.Main.start(&HttpFetcher.fetch/1, url, max_count)
 		{_, toc, _} = :os.timestamp
 		time = toc - tic
 		IO.puts "found urls #{inspect(urls)} in #{time} s"
@@ -35,25 +36,11 @@ defmodule Crawler.Main do
 		visited
 	end
 
-
 	def crawl(fetcher_func, visited, queue, host, count, max_count) do
 		[uri | rest] = queue
 
-		if uri.path == nil do
-			# ignore this url
-			crawl(fetcher_func, visited, rest, host, count, max_count)
-			# this is not properly tail recurring!
-		end
-
-		if uri.host == nil and String.starts_with?(uri.path, "/") do
-			uri = %{uri | host: host}
-			if uri.scheme == nil do
-				uri = %{uri | scheme: "http"}
-			end
-		end
-
 		if Set.member?(visited, URI.to_string(uri)) or uri.host != host do
-			# IO.puts("already visited #{uri}")
+			IO.puts("ignoring #{uri}")
 			# ignore this url
 			crawl(fetcher_func, visited, rest, host, count, max_count)	
 		else
@@ -62,13 +49,21 @@ defmodule Crawler.Main do
 				# IO.puts("body was nil for #{inspect(uri)}")
 				crawl(fetcher_func, visited, rest, host, count, max_count)
 			else
-				link_url_strings = HtmlParser.get_links(body)
-				link_uris = Enum.map(link_url_strings, &URI.parse/1)
-				# IO.inspect(link_uris)	
+				link_uris = HtmlParser.get_links(body) |>
+					Enum.map(&URI.parse/1) |>
+					Enum.map(&_normalize_uri(&1, host))
+
 				IO.puts "Adding url #{URI.to_string(uri)} to visited list (#{Set.size(visited)})"
 				crawl(fetcher_func, Set.put(visited, URI.to_string(uri)), rest ++ link_uris, host, count+1, max_count)
 			end
 		end
+	end
+
+	def _normalize_uri(uri, hostname) do
+		if uri.host == nil and uri.path != nil and String.starts_with?(uri.path, "/") do
+			uri = %{uri | host: hostname, scheme: "http"}
+		end
+		uri
 	end
 end
 
