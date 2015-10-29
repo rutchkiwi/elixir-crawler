@@ -12,12 +12,13 @@ defmodule Visited do
 		send(pid, {:mark_visited, url})
 	end
 
-	def is_visited(url) do
+	def get_visited() do
 		{:ok, pid} = get_pid()
+		# make a random id to make sure we don't answer someone else. neccessary? prob not?? but safe
 		question_id = :random.uniform(1000000000)
-		send(pid, {:visited?, self, question_id, url})
+		send(pid, {:get_visited, self, question_id})
 		receive do
-			{:visited_reply, ^question_id, visited} -> visited
+			{:get_visited_reply, ^question_id, visited} -> visited
 		end
 	end
 
@@ -34,9 +35,10 @@ defmodule Visited do
 
 	def run(visited_set) do
 		receive do
-			{:mark_visited, url} -> run(Set.put(visited_set, url))
-			{:visited?, sender, id, url} -> 
-				send(sender, {:visited_reply, id, Set.member?(visited_set, url)})
+			{:mark_visited, url} ->
+				run(Set.put(visited_set, url))
+			{:get_visited, sender, id} -> 
+				send(sender, {:get_visited_reply, id, visited_set})
 				run(visited_set)
 		end
 	end

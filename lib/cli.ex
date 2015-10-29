@@ -25,36 +25,36 @@ defmodule Crawler.Main do
 	def start(fetcher, url_string, max_count \\ 20) do
 		uri = URI.parse(url_string)
 		host = uri.host
-		crawl(fetcher, HashSet.new, [uri], host, 0, max_count)
+		Visited.start_link()
+		crawl(fetcher, [uri], host, 0, max_count)
 	end
 
-	def crawl(_, visited, [], _, _, _) do
-		visited
-	end
+  	def crawl(_, [], _, _, _) do
+  		Visited.get_visited() |>
+  			Enum.map(&URI.to_string/1) |>
+  			Enum.into(HashSet.new) # There doesn't seem to be a nicer way to map on a set 
+    end
 
-	def crawl(_, visited, _, _, max_count, max_count) do
-		visited
-	end
-
-	def crawl(fetcher_func, visited, queue, host, count, max_count) do
+	def crawl(fetcher_func, queue, host, count, max_count) do
 		[uri | rest] = queue
-
-		if Set.member?(visited, URI.to_string(uri)) or uri.host != host do
-			IO.puts("ignoring #{uri}")
+		visited = Visited.get_visited()
+		if Set.member?(visited, uri) or uri.host != host do
+			# IO.puts("ignoring #{uri}")
 			# ignore this url
-			crawl(fetcher_func, visited, rest, host, count, max_count)	
+			crawl(fetcher_func, rest, host, count, max_count)	
 		else
 			body = fetcher_func.(URI.to_string(uri))
 			if body == nil do
 				# IO.puts("body was nil for #{inspect(uri)}")
-				crawl(fetcher_func, visited, rest, host, count, max_count)
+				crawl(fetcher_func, rest, host, count, max_count)
 			else
 				link_uris = HtmlParser.get_links(body) |>
 					Enum.map(&URI.parse/1) |>
 					Enum.map(&_normalize_uri(&1, host))
 
-				IO.puts "Adding url #{URI.to_string(uri)} to visited list (#{Set.size(visited)})"
-				crawl(fetcher_func, Set.put(visited, URI.to_string(uri)), rest ++ link_uris, host, count+1, max_count)
+				# IO.puts "Adding url #{URI.to_string(uri)} to visited list (#{Set.size(visited)})"
+				Visited.mark_visited(uri)
+				crawl(fetcher_func, rest ++ link_uris, host, count+1, max_count)
 			end
 		end
 	end
