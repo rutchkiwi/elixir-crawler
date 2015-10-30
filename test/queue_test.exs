@@ -7,23 +7,22 @@ defmodule QueueTest do
   end
 
   test "empty" do
-    assert Queue.dequeue == :empty
-  	assert Queue.dequeue == :empty
+    refute_receive(_any, 50)
   end
 
   test "simple" do
     Queue.enqueue(:a)
-    assert Queue.dequeue == {:value, :a}
-    assert Queue.dequeue == :empty
+    assert Queue.dequeue == :a
+    refute_receive(_any, 50)
   end
 
   test "multiple" do
     Queue.enqueue(:a)
     Queue.enqueue(:b)
     Queue.enqueue(:c)
-    assert Queue.dequeue == {:value, :a}
-    assert Queue.dequeue == {:value, :b}
-    assert Queue.dequeue == {:value, :c}
-    assert Queue.dequeue == :empty
+    assert Queue.dequeue == :a
+    assert Queue.dequeue == :b
+    assert Queue.dequeue == :c
+    refute_receive(_any, 50)
   end
 end

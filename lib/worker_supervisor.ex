@@ -1,11 +1,11 @@
 defmodule WorkerSupervisor do
   import Supervisor.Spec
 
-  def start_link do
+  def start_link(fetcher) do
     children = [
-      worker(Task, [fn -> Worker.process_urls("dummy fetcher", 1) end ], id: 1),
-      worker(Task, [fn -> Worker.process_urls("dummy fetcher", 2) end ], id: 2),
-      worker(Task, [fn -> Worker.process_urls("dummy fetcher", 3) end ], id: 3),
+      worker(Task, [fn -> Worker.process_urls(fetcher, 1) end ], id: 1),
+      worker(Task, [fn -> Worker.process_urls(fetcher, 2) end ], id: 2),
+      worker(Task, [fn -> Worker.process_urls(fetcher, 3) end ], id: 3),
       worker(Queue, [])
     ]
 

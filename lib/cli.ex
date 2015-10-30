@@ -26,7 +26,9 @@ defmodule Crawler.Main do
 		uri = URI.parse(url_string)
 		host = uri.host
 		Visited.start_link()
-		crawl(fetcher, [uri], host, 0, max_count)
+		WorkerSupervisor.start_link(fetcher)
+		Queue.enqueue(uri)
+		# crawl(fetcher, [uri], host, 0, max_count)
 	end
 
   	def crawl(_, [], _, _, _) do
