@@ -20,10 +20,10 @@ defmodule QueueTest do
   test "multiple" do
     Queue.enqueue(:a)
     Queue.enqueue(:b)
+    Queue.enqueue(:c)
     assert Queue.dequeue == {:value, :a}
     assert Queue.dequeue == {:value, :b}
+    assert Queue.dequeue == {:value, :c}
     assert Queue.dequeue == :empty
   end
-
-
 end
