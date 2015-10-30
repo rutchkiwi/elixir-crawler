@@ -34,47 +34,32 @@ end
 defmodule Queue do
 	use GenServer
 
-
 	# external interface
 	def start_link() do
-		res = {:ok, pid} = GenServer.start_link(__MODULE__, ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"])
-		Process.register(pid, __MODULE__)
-		res
+		GenServer.start_link(__MODULE__, :queue.new, name: __MODULE__)
 	end
 
 	def dequeue() do
-		{:ok, pid} = get_pid()
-		GenServer.call(pid, :dequeue)
+		GenServer.call(__MODULE__, :dequeue)
 	end
-	
-	# def save_value(pid, value) do
-	# 	IO.puts "save to store pid #{inspect(pid)}"
-	# 	GenServer.cast(pid, {:save_value, value})
-	# ende
 
-	# def get_value(pid) do
-	# 	GenServer.call(pid, :get_value)
-	# end
+	def enqueue(e) do
+		GenServer.cast(__MODULE__, {:enqueue, e})
+	end
 
 	# implementation
 
-	def get_pid() do
-		pid = Process.whereis(__MODULE__)
-		if pid != nil do
-			{:ok, pid} 
-		else 
-			{:error}
+	def handle_call(:dequeue, _from, queue) do
+		{status, queue} = :queue.out(queue)
+		case status do
+			{:value, _value} -> {:reply, status, queue}
+			:empty -> {:reply, status, queue}
 		end
 	end
 
-	def handle_call(:dequeue, _from, [head | tail]) do
-		{:reply, head, tail}
+	def handle_cast({:enqueue, e}, queue) do
+		{:noreply, :queue.in(e, queue)}
 	end
-
-	# def handle_cast({:save_value, value}, _current_value) do
-	# 	IO.puts "store saving its contents"
-	# 	{:noreply, value}
-	# end
 
 	# def terminate(_reason, _) do
 	# 	IO.puts "store terminating!"

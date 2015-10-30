@@ -90,7 +90,7 @@ end
 
 defmodule HttpFetcher do
 	def fetch(url) do
-		IO.puts "fetching url #{inspect(url)}"
+		# IO.puts "fetching url #{inspect(url)}"
 		try do
 			case HTTPoison.get(url) do
 				{:ok, resp} -> resp.body
