@@ -30,32 +30,36 @@ defmodule Crawler.Main do
 	end
 
   	def crawl(_, [], _, _, _) do
-  		Visited.get_visited() |>
-  			Enum.map(&URI.to_string/1) |>
-  			Enum.into(HashSet.new) # There doesn't seem to be a nicer way to map on a set 
+  		set_of_uris_to_strings(Visited.get_visited())
     end
 
 	def crawl(fetcher_func, queue, host, count, max_count) do
 		[uri | rest] = queue
 		visited = Visited.get_visited()
-		if Set.member?(visited, uri) or uri.host != host do
-			# IO.puts("ignoring #{uri}")
-			# ignore this url
-			crawl(fetcher_func, rest, host, count, max_count)	
-		else
-			body = fetcher_func.(URI.to_string(uri))
-			if body == nil do
-				# IO.puts("body was nil for #{inspect(uri)}")
-				crawl(fetcher_func, rest, host, count, max_count)
-			else
-				link_uris = HtmlParser.get_links(body) |>
-					Enum.map(&URI.parse/1) |>
-					Enum.map(&_normalize_uri(&1, host))
+		cond do
+			Set.size(visited) == max_count ->
+				# we're done
+				set_of_uris_to_strings(visited)
+		
+			Set.member?(visited, uri) or uri.host != host ->
+				# IO.puts("ignoring #{uri}")
+				# ignore this url
+				crawl(fetcher_func, rest, host, count, max_count)	
+		
+			true -> # default case
+				body = fetcher_func.(URI.to_string(uri))
+				if body == nil do
+					# IO.puts("body was nil for #{inspect(uri)}")
+					crawl(fetcher_func, rest, host, count, max_count)
+				else
+					link_uris = HtmlParser.get_links(body) |>
+						Enum.map(&URI.parse/1) |>
+						Enum.map(&_normalize_uri(&1, host))
 
-				# IO.puts "Adding url #{URI.to_string(uri)} to visited list (#{Set.size(visited)})"
-				Visited.mark_visited(uri)
-				crawl(fetcher_func, rest ++ link_uris, host, count+1, max_count)
-			end
+					# IO.puts "Adding url #{URI.to_string(uri)} to visited list (#{Set.size(visited)})"
+					Visited.mark_visited(uri)
+					crawl(fetcher_func, rest ++ link_uris, host, count+1, max_count)
+				end
 		end
 	end
 
@@ -65,6 +69,12 @@ defmodule Crawler.Main do
 		end
 		uri
 	end
+
+	def set_of_uris_to_strings(uri_set) do
+		uri_set |>
+  			Enum.map(&URI.to_string/1) |>
+  			Enum.into(HashSet.new)  # There doesn't seem to be a nicer way to map on a set 
+  		end
 end
 
 defmodule HtmlParser do

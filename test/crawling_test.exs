@@ -54,4 +54,13 @@ defmodule CrawlingTest do
     expected = Set.put(expected, "http://a.com/b")
     assert expected == res
   end
+
+  def endless_fake_fetcher_func(_url) do
+    "<a href=\"http://a.com/#{:random.uniform(10000000)}\"></a>"
+  end
+
+  test "stops after given number of pages found" do
+    res = Crawler.Main.start(&endless_fake_fetcher_func/1, "http://a.com/a", 2)
+    assert Set.size(res) == 2
+  end
 end
