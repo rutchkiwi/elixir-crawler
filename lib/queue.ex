@@ -1,14 +1,17 @@
 defmodule Queue do
-
+	# use GenServer
 	# external interface
-	
+	require IEx
+
 	def start_link() do
 		{:ok, pid} = Task.start_link(&await_enqueue/0)
 		Process.register(pid, __MODULE__)
+		{:ok, pid}
 	end
 
 	def dequeue() do
 		send(__MODULE__, {:dequeue, self()})
+		IO.puts "dequeing from process #{inspect __MODULE__}"
 		receive do 
 			{:dequeued, value} -> value
 		end
@@ -20,14 +23,14 @@ defmodule Queue do
 	end
 
 	# implementation	 
-	
-	defp await_enqueue() do
+
+	def await_enqueue() do
 		receive do
 			{:enqueue, e} -> await_dequeue(e)
 		end
 	end
 
-	defp await_dequeue(e) do
+	def await_dequeue(e) do
 		receive do
 			{:dequeue, sender} -> 
 				send(sender, {:dequeued, e})
