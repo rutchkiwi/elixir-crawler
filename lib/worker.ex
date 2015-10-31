@@ -7,10 +7,11 @@ defmodule Worker do
     if body != nil do            # IO.puts("body was nil for #{inspect(uri)}")
       Visited.mark_visited(uri)
 
-      HtmlParser.get_links(body) |>
+      links = HtmlParser.get_links(body) |>
         Enum.map(&URI.parse/1) |>
-        Enum.map(&_normalize_uri(&1, host)) |>
-        Enum.map(fn uri -> Queue.enqueue(uri) end)
+        Enum.map(&_normalize_uri(&1, host))
+
+      Queue.enqueue(links)
 
       IO.puts("visited #{URI.to_string(uri)}")
     end

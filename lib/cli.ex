@@ -29,7 +29,7 @@ defmodule Crawler.Main do
 		WorkerSupervisor.start_link(fetcher, host)
 		Queue.enqueue(uri)
 		receive do
-			{:done -> :done
+			:done -> :done
 		end
 		# crawl(fetcher, [uri], host, 0, max_count)
 	end

@@ -11,7 +11,7 @@ defmodule Queue do
 
 	def dequeue() do
 		send(__MODULE__, {:dequeue, self()})
-		IO.puts "dequeing from process #{inspect __MODULE__}"
+		# IO.puts "dequeing from process #{inspect __MODULE__}"
 		receive do 
 			{:dequeued, value} -> value
 		end
