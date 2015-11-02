@@ -30,7 +30,7 @@ defmodule WorkHandler do
 
 	def complete_job(new_uris) do
 		Enum.map(new_uris, &Queue.enqueue/1)
-		jobs_in_progress = GenServer.call(:counter, :decrement_and_get)
+		jobs_in_progress = GenServer.call(:counter, :decrement)
 		# IO.puts "there are now #{jobs_in_progress} in progress"
 		# should check that if there is nothing in the queue, and jobs is 0
 		# then we're done
@@ -48,17 +48,7 @@ defmodule WorkHandler do
 
 end
 
-defmodule Counter do
-  use GenServer
 
-  def handle_call(:decrement_and_get, _from, count) do
-    {:reply, count - 1 , count - 1}
-  end
-
-  def handle_cast(:increment, count) do
-    {:noreply, count + 1}
-  end
-end
 
 defmodule Results do
 	
