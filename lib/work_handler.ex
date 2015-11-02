@@ -1,31 +1,32 @@
+defmodule WorkHandler.State do
+   defstruct queue: :queue.new(), jobs_in_progress: 0
+end
+
 defmodule WorkHandler do
 	use GenServer
 
 	# for supervisor/ main caller
+
 	def start_link(main_process) do
-		Queue.start_link()
-		GenServer.start_link(Counter, 0, name: :counter)
 		Process.register(main_process, :main_process)
+		GenServer.start_link(WorkHandler, WorkHandler.State, name: __MODULE__)
 	end
 
 	# blocking
 	# main process is the only process who should call this!!! 
 	# thats quite weird, todo: check that it actually is
-	def crawl(first_url) do
-		# todo: url is parsed multiple times, bad
-		Queue.enqueue(URI.parse(first_url))
-		receive do
-			{:done, urls} -> urls
-		end
-	end
+	# def crawl(first_url) do
+	# 	# todo: url is parsed multiple times, bad
+	# 	# Queue.enqueue(URI.parse(first_url))
+	# 	receive do
+	# 		{:done, urls} -> urls
+	# 	end
+	# end
 
 	# For workers
-
 	def request_job() do
-		job = Queue.dequeue() # blocks
-		GenServer.cast(:counter, :increment)
-		IO.puts "a job #{inspect job} was requested"
-		job
+		# IO.puts "a job #{inspect job} was requested"
+		GenServer.call(__MODULE__, :request_job)
 	end
 
 	def complete_job(new_uris) do
@@ -46,19 +47,22 @@ defmodule WorkHandler do
 		jobs_in_progress
 	end
 
-end
 
-defmodule Counter do
-  use GenServer
 
-  def handle_call(:decrement_and_get, _from, count) do
+	# implementation
+
+
+  def handle_call(:request_job, _from, state) do
     {:reply, count - 1 , count - 1}
   end
 
-  def handle_cast(:increment, count) do
-    {:noreply, count + 1}
-  end
+  # def handle_cast(:increment, count) do
+  #   {:noreply, count + 1}
+  # end
+
+
 end
+
 
 defmodule Results do
 	
