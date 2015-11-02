@@ -28,7 +28,6 @@ end
 
 defmodule Counter do
   use GenServer
-  # Callbacks
 
   def handle_call(:decrement_and_get, _from, count) do
     {:reply, count - 1 , count - 1}

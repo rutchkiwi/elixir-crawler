@@ -1,3 +1,5 @@
+# TODO: run over multiple machines
+
 defmodule Crawler.CLI do
 	def main([url, max_count_str]) do
 		{_, tic, _} = :os.timestamp
