@@ -1,6 +1,6 @@
 defmodule Worker do
 	def process_urls(fetcher, host, id) do
-		uri = Queue.dequeue()
+		uri = WorkHandler.request_job()
     IO.puts "dequed uri #{inspect uri}"
 
     body = fetcher.(URI.to_string(uri))
@@ -11,7 +11,7 @@ defmodule Worker do
         Enum.map(&URI.parse/1) |>
         Enum.map(&_normalize_uri(&1, host))
 
-      Queue.enqueue(links)
+      Queue.complete_job(links)
 
       IO.puts("visited #{URI.to_string(uri)}")
     end

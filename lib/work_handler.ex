@@ -37,3 +37,35 @@ defmodule Counter do
     {:noreply, count + 1}
   end
 end
+
+defmodule Results do
+	
+	def start_link() do
+		Task.start_link(&wait/0, name: __MODULE__)
+	end
+
+	def report_visited_uri(uri) do
+		send(__MODULE__, URI.to_string(uri))
+	end
+
+	def get_all_results() do
+		send(__MODULE__, :give_results)
+		receive do
+			{:give_results_answer, all_results} -> all_results
+		end
+	end
+
+	def wait() do
+		{caller, all_results} = receive do
+			{:give_results, caller} -> {caller, _fetch_all_results(HashSet.new)}
+		end
+		send(caller, {:give_results_answer, all_results})
+	end
+
+	def _fetch_all_results(results) do
+		receive do
+			{:visited, url} -> _fetch_all_results(Set.put(results, url))
+			after 0 -> results
+		end
+	end
+end

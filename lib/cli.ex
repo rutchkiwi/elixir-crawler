@@ -25,11 +25,9 @@ defmodule Crawler.Main do
 	require IEx
 
 	def start(fetcher, url_string, max_count \\ 20) do
-		uri = URI.parse(url_string)
-		host = uri.host
+
 		Visited.start_link()
-		WorkerSupervisor.start_link(fetcher, host)
-		Queue.enqueue(uri)
+		WorkerSupervisor.start_link(fetcher, url_string)
 		receive do
 			:done -> :done
 		end
