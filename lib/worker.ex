@@ -4,7 +4,7 @@ defmodule Worker do
     IO.puts "worker about to start on #{inspect uri}"
 
     body = fetcher.(URI.to_string(uri))
-    if body != nil do            # IO.puts("body was nil for #{inspect(uri)}")
+    if body != nil do            
       Visited.mark_visited(uri)
 
       links = HtmlParser.get_links(body) |>
@@ -12,10 +12,9 @@ defmodule Worker do
         Enum.map(&_normalize_uri(&1, host))
 
       Results.report_visited_uri(uri)
-      Queue.complete_job(links)
-
       IO.puts("visited #{URI.to_string(uri)}")
     end
+    WorkHandler.complete_job([])
     process_urls(fetcher, host, id)
   end
 

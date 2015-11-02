@@ -1,11 +1,13 @@
 defmodule WorkHandler do
 	use GenServer
+	require IEx
 
 	# for supervisor/ main caller
 	def start_link(main_process) do
 		Queue.start_link()
-		GenServer.start_link(Counter, 0, name: :counter)
+		Process.register(Counter.start_link(), :in_progress_counter)
 		Process.register(main_process, :main_process)
+		Results.start_link()
 	end
 
 	# blocking
@@ -14,8 +16,10 @@ defmodule WorkHandler do
 	def crawl(first_url) do
 		# todo: url is parsed multiple times, bad
 		Queue.enqueue(URI.parse(first_url))
+		IO.puts("now awaiting :done")
 		receive do
 			{:done, urls} -> urls
+			_ -> raise "wtf!"
 		end
 	end
 
@@ -23,14 +27,14 @@ defmodule WorkHandler do
 
 	def request_job() do
 		job = Queue.dequeue() # blocks
-		GenServer.cast(:counter, :increment)
+		Counter.increment(:in_progress_counter)
 		IO.puts "a job #{inspect job} was requested"
 		job
 	end
 
 	def complete_job(new_uris) do
 		Enum.map(new_uris, &Queue.enqueue/1)
-		jobs_in_progress = GenServer.call(:counter, :decrement)
+		jobs_in_progress = Counter.decrement(:in_progress_counter)
 		# IO.puts "there are now #{jobs_in_progress} in progress"
 		# should check that if there is nothing in the queue, and jobs is 0
 		# then we're done
@@ -38,7 +42,9 @@ defmodule WorkHandler do
 			raise "a job was completed when no jobs in progress!"
 		end
 
-		if 0 == jobs_in_progress  == Queue.size() do
+		IO.inspect 0 == jobs_in_progress  == Queue.size()
+		if {0, 0} == {jobs_in_progress, Queue.size()} do
+			IO.puts "done in WorkHandler"
 			# We're done. knows too much
 			send(:main_process, Results.get_all_results())
 		end
@@ -53,7 +59,8 @@ end
 defmodule Results do
 	
 	def start_link() do
-		Task.start_link(&_wait/0, name: __MODULE__)
+		{:ok, pid} = Task.start_link(&_wait/0)
+		Process.register(pid, __MODULE__)
 	end
 
 	def report_visited_uri(uri) do
@@ -61,7 +68,7 @@ defmodule Results do
 	end
 
 	def get_all_results() do
-		send(__MODULE__, :give_results)
+		send(__MODULE__, {:give_results, self()})
 		receive do
 			{:give_results_answer, all_results} -> all_results
 		end
