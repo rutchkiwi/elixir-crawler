@@ -1,7 +1,7 @@
 defmodule Worker do
 	def process_urls(fetcher, host, id) do
 		uri = WorkHandler.request_job()
-    IO.puts "dequed uri #{inspect uri}"
+    IO.puts "worker about to start on #{inspect uri}"
 
     body = fetcher.(URI.to_string(uri))
     if body != nil do            # IO.puts("body was nil for #{inspect(uri)}")
@@ -11,6 +11,7 @@ defmodule Worker do
         Enum.map(&URI.parse/1) |>
         Enum.map(&_normalize_uri(&1, host))
 
+      Results.report_visited_uri(uri)
       Queue.complete_job(links)
 
       IO.puts("visited #{URI.to_string(uri)}")

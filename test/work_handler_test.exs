@@ -2,7 +2,8 @@ defmodule WorkHandlerQueTest do
   use ExUnit.Case
 
   setup do
-    WorkHandler.start_link(:a) # 1 job queued, 0 in progress
+    WorkHandler.start_link(self()) # 1 job queued, 0 in progress
+    Queue.enqueue(:a)
     :ok
   end
 

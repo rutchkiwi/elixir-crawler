@@ -25,12 +25,9 @@ defmodule Crawler.Main do
 	require IEx
 
 	def start(fetcher, url_string, max_count \\ 20) do
-
 		Visited.start_link()
-		WorkerSupervisor.start_link(fetcher, url_string)
-		receive do
-			:done -> :done
-		end
+		WorkerSupervisor.start_link(fetcher, url_string, self())
+		WorkHandler.crawl(url_string)
 		# crawl(fetcher, [uri], host, 0, max_count)
 	end
 end

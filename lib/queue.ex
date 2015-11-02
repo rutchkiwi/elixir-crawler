@@ -22,6 +22,10 @@ defmodule Queue do
 		:ok
 	end
 
+	def size(e) do
+		TODO!!!!
+	end
+
 	# implementation	 
 
 	def await_enqueue() do

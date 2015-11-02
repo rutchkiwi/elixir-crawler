@@ -1,15 +1,30 @@
 defmodule WorkHandler do
 	use GenServer
 
-	def start_link(first_uri) do
+	# for supervisor/ main caller
+	def start_link(main_process) do
 		Queue.start_link()
-		Queue.enqueue(first_uri)
 		GenServer.start_link(Counter, 0, name: :counter)
+		Process.register(main_process, :main_process)
 	end
+
+	# blocking
+	# main process is the only process who should call this!!! 
+	# thats quite weird, todo: check that it actually is
+	def crawl(first_url) do
+		# todo: url is parsed multiple times, bad
+		Queue.enqueue(URI.parse(first_url))
+		receive do
+			{:done, urls} -> urls
+		end
+	end
+
+	# For workers
 
 	def request_job() do
 		job = Queue.dequeue() # blocks
 		GenServer.cast(:counter, :increment)
+		IO.puts "a job #{inspect job} was requested"
 		job
 	end
 
@@ -22,8 +37,15 @@ defmodule WorkHandler do
 		if jobs_in_progress < 0 do
 			raise "a job was completed when no jobs in progress!"
 		end
+
+		if 0 == jobs_in_progress  == Queue.size() do
+			# We're done. knows too much
+			send(:main_process, Results.get_all_results())
+		end
+		# weird return value
 		jobs_in_progress
 	end
+
 end
 
 defmodule Counter do
@@ -41,7 +63,7 @@ end
 defmodule Results do
 	
 	def start_link() do
-		Task.start_link(&wait/0, name: __MODULE__)
+		Task.start_link(&_wait/0, name: __MODULE__)
 	end
 
 	def report_visited_uri(uri) do
@@ -55,7 +77,7 @@ defmodule Results do
 		end
 	end
 
-	def wait() do
+	def _wait() do
 		{caller, all_results} = receive do
 			{:give_results, caller} -> {caller, _fetch_all_results(HashSet.new)}
 		end
