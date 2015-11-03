@@ -14,7 +14,7 @@ defmodule Worker do
       Results.report_visited_uri(uri)
       IO.puts("visited #{URI.to_string(uri)}")
     end
-    WorkHandler.complete_job([])
+    WorkHandler.complete_job(links)
     process_urls(fetcher, host, id)
   end
 

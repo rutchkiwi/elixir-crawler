@@ -1,4 +1,5 @@
 defmodule Results do
+	# TODO: message que will fill up
 	
 	def start_link() do
 		{:ok, pid} = Task.start_link(&_wait/0)

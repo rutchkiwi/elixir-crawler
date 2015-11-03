@@ -19,7 +19,7 @@ defmodule WorkHandler do
 		IO.puts("now awaiting :done")
 		receive do
 			{:done, urls} -> urls
-			_ -> raise "wtf!"
+			# _ -> raise "wtf!"
 		end
 	end
 
@@ -28,11 +28,12 @@ defmodule WorkHandler do
 	def request_job() do
 		job = Queue.dequeue() # blocks
 		Counter.increment(:in_progress_counter)
-		IO.puts "a job #{inspect job} was requested"
+		# IO.puts "a job #{inspect job} was requested"
 		job
 	end
 
 	def complete_job(new_uris) do
+		IO.puts("new uris found are #{inspect new_uris}")
 		Enum.map(new_uris, &Queue.enqueue/1)
 		jobs_in_progress = Counter.decrement(:in_progress_counter)
 		# IO.puts "there are now #{jobs_in_progress} in progress"
@@ -46,7 +47,7 @@ defmodule WorkHandler do
 		if {0, 0} == {jobs_in_progress, Queue.size()} do
 			IO.puts "done in WorkHandler"
 			# We're done. knows too much
-			send(:main_process, Results.get_all_results())
+			send(:main_process, {:done, Results.get_all_results()})
 		end
 		# weird return value
 		jobs_in_progress
@@ -55,36 +56,3 @@ defmodule WorkHandler do
 end
 
 
-
-defmodule Results do
-	
-	def start_link() do
-		{:ok, pid} = Task.start_link(&_wait/0)
-		Process.register(pid, __MODULE__)
-	end
-
-	def report_visited_uri(uri) do
-		send(__MODULE__, URI.to_string(uri))
-	end
-
-	def get_all_results() do
-		send(__MODULE__, {:give_results, self()})
-		receive do
-			{:give_results_answer, all_results} -> all_results
-		end
-	end
-
-	def _wait() do
-		{caller, all_results} = receive do
-			{:give_results, caller} -> {caller, _fetch_all_results(HashSet.new)}
-		end
-		send(caller, {:give_results_answer, all_results})
-	end
-
-	def _fetch_all_results(results) do
-		receive do
-			{:visited, url} -> _fetch_all_results(Set.put(results, url))
-			after 0 -> results
-		end
-	end
-end

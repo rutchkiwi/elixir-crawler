@@ -23,6 +23,7 @@ defmodule Queue do
 	end
 
 	def enqueue(e) do
+		IO.puts "enqued #{inspect e}"
 		Counter.increment(:queue_size_counter)
 		send(__MODULE__, {:enqueue, e})
 		:ok
