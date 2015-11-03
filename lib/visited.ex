@@ -22,6 +22,10 @@ defmodule Visited do
 		end
 	end
 
+	def visited?(url) do
+		Set.member?(get_visited(), url)
+	end
+
 	####### implementation #######
 
 	def get_pid() do

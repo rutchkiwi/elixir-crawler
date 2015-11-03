@@ -4,6 +4,7 @@ defmodule WorkHandler do
 
 	# for supervisor/ main caller
 	def start_link(main_process) do
+		Visited.start_link()
 		Queue.start_link()
 		Process.register(Counter.start_link(), :in_progress_counter)
 		Process.register(main_process, :main_process)
@@ -27,12 +28,18 @@ defmodule WorkHandler do
 
 	def request_job() do
 		job = Queue.dequeue() # blocks
-		Counter.increment(:in_progress_counter)
-		# IO.puts "a job #{inspect job} was requested"
-		job
+		if Visited.visited?(job) do
+			# ignore this url
+			request_job()
+		else
+			Counter.increment(:in_progress_counter)
+			# IO.puts "a job #{inspect job} was requested"
+			job
+		end
 	end
 
-	def complete_job(new_uris) do
+	def complete_job(visited_uri, new_uris) do
+		Visited.mark_visited(visited_uri)
 		IO.puts("new uris found are #{inspect new_uris}")
 		Enum.map(new_uris, &Queue.enqueue/1)
 		jobs_in_progress = Counter.decrement(:in_progress_counter)

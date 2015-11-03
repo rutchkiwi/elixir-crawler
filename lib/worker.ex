@@ -13,9 +13,13 @@ defmodule Worker do
 
       Results.report_visited_uri(uri)
       IO.puts("visited #{URI.to_string(uri)}")
+      WorkHandler.complete_job(uri, links)
+      process_urls(fetcher, host, id)
+      # nasty conditional logic with duplication
+    else
+      WorkHandler.complete_job(uri, [])
+      process_urls(fetcher, host, id)
     end
-    WorkHandler.complete_job(links)
-    process_urls(fetcher, host, id)
   end
 
   def _normalize_uri(uri, hostname) do
