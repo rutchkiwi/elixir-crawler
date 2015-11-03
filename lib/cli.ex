@@ -48,6 +48,7 @@ defmodule HttpFetcher do
 			end
 		catch 
 			:exit, code -> 
+				# todo: let this crash
 				IO.puts("ERROR, code #{inspect(code)}")
 				nil
 			# :exit, code - "Exited with code #{inspect code}"​

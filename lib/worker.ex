@@ -1,7 +1,7 @@
 defmodule Worker do
 	def process_urls(fetcher, host, id) do
 		uri = WorkHandler.request_job()
-    IO.puts "worker about to start on #{inspect uri}"
+    # IO.puts "worker about to start on #{inspect uri}"
 
     body = fetcher.(URI.to_string(uri))
     if body != nil do            
@@ -12,7 +12,7 @@ defmodule Worker do
         Enum.map(&_normalize_uri(&1, host))
 
       Results.report_visited_uri(uri)
-      IO.puts("visited #{URI.to_string(uri)}")
+      # IO.puts("visited #{URI.to_string(uri)}")
       WorkHandler.complete_job(uri, links)
       process_urls(fetcher, host, id)
       # nasty conditional logic with duplication

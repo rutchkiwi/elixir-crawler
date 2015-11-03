@@ -20,7 +20,6 @@ defmodule WorkHandler do
 		# somewhere?
 		# todo: url is parsed multiple times, bad
 		Queue.enqueue(URI.parse(first_url))
-		IO.puts("now awaiting :done")
 		receive do
 			{:done, urls} -> urls
 		end
@@ -56,7 +55,7 @@ defmodule WorkHandler do
 			# todo: seems like we'll deadlock when an already visited url is the only
 			# thing added here, since we only check this on complete_job.
 			# maybe it should be checked in reuqest_job as well? add test
-			IO.puts "done in WorkHandler"
+			# IO.puts "done in WorkHandler"
 			# We're done. knows too much
 			send(:main_process, {:done, Results.get_all_results()})
 		end
