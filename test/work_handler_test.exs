@@ -2,7 +2,8 @@ defmodule WorkHandlerTest do
   use ExUnit.Case
 
   setup do
-    WorkHandler.start_link(self()) # 1 job queued, 0 in progress
+    # todo: this max_count should be virified here maybe
+    WorkHandler.start_link(self(), 100) # 1 job queued, 0 in progress
     Queue.enqueue(:a)
     :ok
   end

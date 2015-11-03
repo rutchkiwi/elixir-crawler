@@ -22,7 +22,7 @@ end
 
 defmodule Crawler.Main do
 	def start(fetcher, url_string, max_count \\ 20) do
-		WorkerSupervisor.start_link(fetcher, url_string, self())
+		WorkerSupervisor.start_link(fetcher, url_string, max_count, self())
 		WorkHandler.crawl(url_string)
 	end
 end

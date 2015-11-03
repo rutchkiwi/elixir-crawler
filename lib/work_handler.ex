@@ -3,7 +3,8 @@ defmodule WorkHandler do
 	require IEx
 
 	# for supervisor/ main caller
-	def start_link(main_process) do
+	def start_link(main_process, max_count) do
+		Agent.start_link(fn -> max_count end, name: :max_count)
 		Visited.start_link()
 		Queue.start_link()
 		Process.register(Counter.start_link(), :in_progress_counter)
@@ -15,12 +16,13 @@ defmodule WorkHandler do
 	# main process is the only process who should call this!!! 
 	# thats quite weird, todo: check that it actually is
 	def crawl(first_url) do
+		# todoL: this is a really stupid way to do this. should be baked in 
+		# somewhere?
 		# todo: url is parsed multiple times, bad
 		Queue.enqueue(URI.parse(first_url))
 		IO.puts("now awaiting :done")
 		receive do
 			{:done, urls} -> urls
-			# _ -> raise "wtf!"
 		end
 	end
 
@@ -40,7 +42,6 @@ defmodule WorkHandler do
 
 	def complete_job(visited_uri, new_uris) do
 		Visited.mark_visited(visited_uri)
-		IO.puts("new uris found are #{inspect new_uris}")
 		Enum.map(new_uris, &Queue.enqueue/1)
 		jobs_in_progress = Counter.decrement(:in_progress_counter)
 		# IO.puts "there are now #{jobs_in_progress} in progress"
@@ -50,8 +51,11 @@ defmodule WorkHandler do
 			raise "a job was completed when no jobs in progress!"
 		end
 
-		IO.inspect 0 == jobs_in_progress  == Queue.size()
-		if {0, 0} == {jobs_in_progress, Queue.size()} do
+		if {0, 0} == {jobs_in_progress, Queue.size()} or 
+				Visited.size >= Agent.get(:max_count, &(&1)) do
+			# todo: seems like we'll deadlock when an already visited url is the only
+			# thing added here, since we only check this on complete_job.
+			# maybe it should be checked in reuqest_job as well? add test
 			IO.puts "done in WorkHandler"
 			# We're done. knows too much
 			send(:main_process, {:done, Results.get_all_results()})

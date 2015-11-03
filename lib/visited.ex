@@ -26,6 +26,10 @@ defmodule Visited do
 		Set.member?(get_visited(), url)
 	end
 
+	def size() do
+		Set.size(get_visited())
+	end
+
 	####### implementation #######
 
 	def get_pid() do

@@ -4,37 +4,35 @@ defmodule VisitedTest do
   @a URI.parse("http://a.com")
   @b URI.parse("http://b.com")
   @c URI.parse("http://c.com")
-
-  test "empty" do
+  
+  setup do
   	Visited.start_link()
-  	assert not visited?("a")
+    :ok
   end
 
-  def visited?(uri) do
-    visited = Visited.get_visited()
-    Set.member?(visited, uri)
+  test "empty" do
+  	assert not Visited.visited?("a")
+    assert Visited.size() == 0
   end
 
   test "insert" do
-  	Visited.start_link()
-
-  	assert not visited?(@a)
-  	Visited.mark_visited(@a)
-  	assert visited?(@a)
+    assert not Visited.visited?(@a)
+    Visited.mark_visited(@a)
+    assert Visited.visited?(@a)
+    assert Visited.size() == 1
   end
 
   test "insert multiple" do
-  	Visited.start_link()
-  	
-  	assert not visited?(@a)
-  	Visited.mark_visited(@a)
-  	assert visited?(@a)
+    assert not Visited.visited?(@a)
+    Visited.mark_visited(@a)
+    assert Visited.visited?(@a)
 
-  	Visited.mark_visited(@b)
-  	Visited.mark_visited(@c)
+    Visited.mark_visited(@b)
+    Visited.mark_visited(@c)
 
-  	assert visited?(@a)
-  	assert visited?(@b)
-  	assert visited?(@c)
+    assert Visited.visited?(@a)
+    assert Visited.visited?(@b)
+    assert Visited.visited?(@c)
+    assert Visited.size() == 3
   end
 end
