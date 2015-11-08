@@ -11,15 +11,6 @@ defmodule Crawler.CLI do
 	end
 end
 
-# defmodule Crawler.Main do
-# 	def crawl(fetcher_func, url) do
-# 		body = fetcher_func.(url)
-# 		links = HtmlParser.get_links(body)
-# 		rest = Enum.map(links, &crawl(fetcher_func, &1))
-# 		[url | List.flatten(rest)]
-# 	end
-# end
-
 defmodule Crawler.Main do
 	def start(fetcher, url_string, max_count \\ 20) do
 		WorkerSupervisor.start_link(fetcher, url_string, max_count, self())
