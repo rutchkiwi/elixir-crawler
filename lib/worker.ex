@@ -2,9 +2,9 @@ defmodule Worker do
   require Logger
 
 	def process_urls(fetcher, host, id) do
-    Logger.info "worker #{id} requesting job"
+    Logger.debug "worker #{id} requesting job"
     uri = WorkHandler.request_job()
-    Logger.info "worker #{id} about to start on #{uri.host}#{uri.path}"
+    Logger.debug "worker #{id} about to start on #{uri.host}#{uri.path}"
 
     body = fetcher.(URI.to_string(uri))
     if body != nil do            
@@ -15,7 +15,6 @@ defmodule Worker do
         Enum.map(&_normalize_uri(&1, host))
 
       Results.report_visited_uri(uri)
-      # IO.puts("visited #{URI.to_string(uri)}")
       WorkHandler.complete_job(uri, links)
       process_urls(fetcher, host, id)
       # nasty conditional logic with duplication

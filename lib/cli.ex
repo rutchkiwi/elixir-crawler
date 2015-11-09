@@ -24,14 +24,12 @@ defmodule HtmlParser do
 	end
 
 	def get_links(body) do
-		# IO.puts "parsing body #{body}"
 		Floki.attribute(body, "a", "href")
 	end
 end
 
 defmodule HttpFetcher do
 	def fetch(url) do
-		# IO.puts "fetching url #{inspect(url)}"
 		try do
 			case HTTPoison.get(url) do
 				{:ok, resp} -> resp.body
