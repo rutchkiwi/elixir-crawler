@@ -45,7 +45,7 @@ defmodule WorkHandler do
 
 	def complete_job(visited_uri, new_uris) do
 		Visited.mark_visited(visited_uri)
-		:timer.sleep(5)
+		# :timer.sleep(5)
 		Counter.increment(:unfinished_jobs, length(new_uris))
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, &Queue.enqueue/1)
@@ -57,7 +57,7 @@ defmodule WorkHandler do
 		# 	raise "a job was completed when no jobs in progress!"
 		# end
 
-		:timer.sleep(5)
+		# :timer.sleep(5)
 		if no_unfinished_jobs == 0 or Visited.size >= Agent.get(:max_count, &(&1)) do
 			Logger.debug "completed last job, sending done msg."
 			# todo: seems like we'll deadlock when an already visited url is the only
