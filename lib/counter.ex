@@ -6,8 +6,8 @@ defmodule Counter do
 		pid
 	end
 
-	def increment(pid) do
-		GenServer.call(pid, :increment)
+	def increment(pid, n \\ 1) do
+		GenServer.call(pid, {:increment, n})
 	end
 
 	def decrement(pid) do
@@ -28,7 +28,7 @@ defmodule Counter do
 		{:reply, count , count}
 	end
 
-	def handle_call(:increment, _from, count) do
-		{:reply, count + 1, count + 1}
+	def handle_call({:increment, n}, _from, count) do
+		{:reply, count + n, count + n}
 	end
 end
