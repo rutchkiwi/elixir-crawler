@@ -14,6 +14,7 @@ defmodule CrawlingTest do
       ~s(<a href="http://a.com/loop"></a>
         <a href="http://a.com/a"></a>)
     }
+    :timer.sleep(50)
     pages[url]
   end
 

@@ -1,6 +1,6 @@
 defmodule WorkHandler do
 	use GenServer
-	require IEx
+	require Logger
 
 	# for supervisor/ main caller
 	def start_link(main_process, max_count) do
@@ -10,6 +10,8 @@ defmodule WorkHandler do
 		Process.register(Counter.start_link(), :in_progress_counter)
 		Process.register(main_process, :main_process)
 		Results.start_link()
+
+		GenServer.start_link(WorkHandler, [])
 	end
 
 	# blocking
@@ -26,13 +28,16 @@ defmodule WorkHandler do
 	end
 
 	# For workers
+	# todo: both of these must be run inside the process, otherwise race conditions can occur
 
 	def request_job() do
+		Logger.debug "RJ: job requestd"
 		job = Queue.dequeue() # blocks
 		if Visited.visited?(job) do
 			# ignore this url
 			request_job()
 		else
+			Logger.debug "RJ: job found, counter will be incremented"
 			Counter.increment(:in_progress_counter)
 			# IO.puts "a job #{inspect job} was requested"
 			job
@@ -40,8 +45,12 @@ defmodule WorkHandler do
 	end
 
 	def complete_job(visited_uri, new_uris) do
+		Logger.debug "CJ: job completion of #{visited_uri.path}"
 		Visited.mark_visited(visited_uri)
+		:timer.sleep(5)
+		Logger.debug "CJ: enqueing jobs #{inspect new_uris}"
 		Enum.map(new_uris, &Queue.enqueue/1)
+		Logger.debug "CJ: decremeting and getting new value of in_progress_counter"
 		jobs_in_progress = Counter.decrement(:in_progress_counter)
 		# IO.puts "there are now #{jobs_in_progress} in progress"
 		# should check that if there is nothing in the queue, and jobs is 0
@@ -50,8 +59,13 @@ defmodule WorkHandler do
 			raise "a job was completed when no jobs in progress!"
 		end
 
-		if {0, 0} == {jobs_in_progress, Queue.size()} or 
-				Visited.size >= Agent.get(:max_count, &(&1)) do
+		:timer.sleep(5)
+		Logger.debug "CJ: checking queue size"
+		queue_size = Queue.size()
+		Logger.debug "CJ: deciding on doneness"
+		if {0, 0} == {jobs_in_progress, queue_size} or 
+			Visited.size >= Agent.get(:max_count, &(&1)) do
+			Logger.warn "completed last job, sending done msg. based on #{inspect {jobs_in_progress, queue_size}}"
 			# todo: seems like we'll deadlock when an already visited url is the only
 			# thing added here, since we only check this on complete_job.
 			# maybe it should be checked in reuqest_job as well? add test

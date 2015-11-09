@@ -1,7 +1,10 @@
 defmodule Worker do
-	def process_urls(fetcher, host) do
-		uri = WorkHandler.request_job()
-    IO.puts "worker about to start on #{inspect uri}"
+  require Logger
+
+	def process_urls(fetcher, host, id) do
+    Logger.info "worker #{id} requesting job"
+    uri = WorkHandler.request_job()
+    Logger.info "worker #{id} about to start on #{uri.host}#{uri.path}"
 
     body = fetcher.(URI.to_string(uri))
     if body != nil do            
@@ -14,11 +17,11 @@ defmodule Worker do
       Results.report_visited_uri(uri)
       # IO.puts("visited #{URI.to_string(uri)}")
       WorkHandler.complete_job(uri, links)
-      process_urls(fetcher, host)
+      process_urls(fetcher, host, id)
       # nasty conditional logic with duplication
     else
       WorkHandler.complete_job(uri, [])
-      process_urls(fetcher, host)
+      process_urls(fetcher, host, id)
     end
   end
 
