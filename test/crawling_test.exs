@@ -64,4 +64,21 @@ defmodule CrawlingTest do
     res = Crawler.Main.start(&endless_fake_fetcher_func/1, "http://a.com/a", 2)
     assert Set.size(res) == 2
   end
+
+  def fake_fetcher_2(url) do
+   pages = %{
+    "http://a.com/a" =>
+      ~s(<a href="http://a.com/b"></a>),
+    "http://a.com/b" =>
+      ~s(<a href="http://a.com/a"></a>),
+    }
+    :timer.sleep(50)
+    pages[url]
+  end
+
+  test "visited" do
+    res = Crawler.Main.start(&endless_fake_fetcher_func/1, "http://a.com/a")
+    assert Set.size(res) == 2
+  end
+
 end
