@@ -34,12 +34,19 @@ defmodule WorkHandler do
 	def request_job() do
 		Logger.debug "job requestd"
 		job = Queue.dequeue() # blocks
-		if Visited.visited?(job) do
-			# todo: get rid of this! nicer if everything done in complete job, or worker check if visited himself maybe (and call complete with soemthing else)
-			Logger.debug "ignoring already visited #{job.host}, decrement unfinished to #{Counter.decrement(:unfinished_jobs)}"
-			request_job()
-		else
-			job
+		job
+	end
+
+ 	def ignoring_job() do
+		check_completed(Counter.decrement(:unfinished_jobs))
+ 	end
+
+ 	def check_completed(no_unfinished_jobs) do
+ 		if no_unfinished_jobs <= 0 or Visited.size >= Agent.get(:max_count, &(&1)) do
+			Logger.debug "completed last job, sending done msg."
+
+			# We're done. knows too much
+			send(:main_process, {:done, Results.get_all_results()})
 		end
 	end
 
@@ -49,30 +56,13 @@ defmodule WorkHandler do
 		Counter.increment(:unfinished_jobs, length(new_uris))
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, &Queue.enqueue/1)
-		no_unfinished_jobs = Counter.decrement(:unfinished_jobs)
 
-		# should check that if there is nothing in the queue, and jobs is 0
-		# then we're done
-		# if jobs_in_progress < 0 do
-		# 	raise "a job was completed when no jobs in progress!"
-		# end
-
-		# :timer.sleep(5)
-		if no_unfinished_jobs == 0 or Visited.size >= Agent.get(:max_count, &(&1)) do
-			Logger.debug "completed last job, sending done msg."
-			# todo: seems like we'll deadlock when an already visited url is the only
-			# thing added here, since we only check this on complete_job.
-			# maybe it should be checked in reuqest_job as well? add test
-
-			# We're done. knows too much
-			send(:main_process, {:done, Results.get_all_results()})
-		end
+		check_completed(Counter.decrement(:unfinished_jobs))
 	end
 
 	defp prettyfy_list_of_uris(uris) do
 		Enum.map(uris, fn uri -> uri.path end) |> Enum.join(", ")
 	end
-
 end
 
 

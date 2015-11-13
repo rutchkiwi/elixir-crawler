@@ -77,7 +77,7 @@ defmodule CrawlingTest do
   end
 
   test "visited" do
-    res = Crawler.Main.start(&endless_fake_fetcher_func/1, "http://a.com/a")
+    res = Crawler.Main.start(&fake_fetcher_2/1, "http://a.com/a")
     assert Set.size(res) == 2
   end
 
