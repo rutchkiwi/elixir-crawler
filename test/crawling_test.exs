@@ -14,7 +14,6 @@ defmodule CrawlingTest do
       ~s(<a href="http://a.com/loop"></a>
         <a href="http://a.com/a"></a>)
     }
-    :timer.sleep(50)
     pages[url]
   end
 
@@ -72,7 +71,6 @@ defmodule CrawlingTest do
     "http://a.com/b" =>
       ~s(<a href="http://a.com/a"></a>),
     }
-    :timer.sleep(50)
     pages[url]
   end
 
@@ -80,5 +78,4 @@ defmodule CrawlingTest do
     res = Crawler.Main.start(&fake_fetcher_2/1, "http://a.com/a")
     assert Set.size(res) == 2
   end
-
 end
