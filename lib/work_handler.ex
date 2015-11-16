@@ -30,9 +30,8 @@ defmodule WorkHandler do
 	end
 
 	# For workers
-
 	def request_job() do
-		Logger.debug "job requestd"
+		Logger.debug "job requested"
 		job = Queue.dequeue() # blocks
 		job
 	end
@@ -40,15 +39,6 @@ defmodule WorkHandler do
  	def ignoring_job() do
 		check_completed(Counter.decrement(:unfinished_jobs))
  	end
-
- 	def check_completed(no_unfinished_jobs) do
- 		if no_unfinished_jobs <= 0 or Visited.size >= Agent.get(:max_count, &(&1)) do
-			Logger.debug "completed last job, sending done msg."
-
-			# We're done. knows too much
-			send(:main_process, {:done, Results.get_all_results()})
-		end
-	end
 
 	def complete_job(visited_uri, new_uris) do
 		Visited.mark_visited(visited_uri)
@@ -58,6 +48,15 @@ defmodule WorkHandler do
 		Enum.map(new_uris, &Queue.enqueue/1)
 
 		check_completed(Counter.decrement(:unfinished_jobs))
+	end
+
+ 	def check_completed(no_unfinished_jobs) do
+ 		if no_unfinished_jobs <= 0 or Visited.size >= Agent.get(:max_count, &(&1)) do
+			Logger.debug "completed last job, sending done msg."
+
+			# We're done. knows too much
+			send(:main_process, {:done, Results.get_all_results()})
+		end
 	end
 
 	defp prettyfy_list_of_uris(uris) do

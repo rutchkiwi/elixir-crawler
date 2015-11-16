@@ -6,6 +6,7 @@ defmodule WorkerSupervisor do
     host = uri.host
 
     children = [
+      # shouldnt be restarted
       worker(Task, [fn -> Worker.process_urls(fetcher, host, 1) end ], id: 1),
       worker(Task, [fn -> Worker.process_urls(fetcher, host, 2) end ], id: 2),
     ]
