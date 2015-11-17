@@ -11,12 +11,13 @@ defmodule Worker do
     caller = self()
     spawn_link (fn -> work(fetcher, host, uri, caller) end)
     receive do
-      {:done, links} ->
+      # Uhhh a bit weird to trap exits like this
+      {:EXIT, _child_pid, {:done, links}} ->
          WorkHandler.complete_job(uri, links)
-      {:ignoring} -> 
+      {:EXIT, _child_pid, :ignoring} ->
           WorkHandler.ignoring_job()
-      {:EXIT, _child_pid, _error} ->
-          Logger.info "handling an error in worker subprocess"
+      {:EXIT, _child_pid, error} ->
+          Logger.info "handling an error in worker subprocess: #{inspect error}"
          WorkHandler.error_in_job(uri)
       _ -> Logger.error "ARRRRGGGGH"
       # todo!
@@ -29,7 +30,7 @@ defmodule Worker do
   def work(fetcher, host, uri, caller) do
     if Visited.visited?(uri) do
       # Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
-      send(caller, {:ignoring})
+      Process.exit(self(), :ignoring)
     else
       # Logger.debug "worker subprocess about to start on #{uri.host}#{uri.path}"
 
@@ -43,7 +44,7 @@ defmodule Worker do
       # todo: seems like race conditions possible if report_visited_uri is too slow
       Results.report_visited_uri(uri)
       # Logger.debug "send #{inspect caller} done signal with #{inspect links}"
-      send(caller, {:done, links})
+     Process.exit(self(), {:done, links})
     end
   end
 
