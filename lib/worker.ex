@@ -4,7 +4,7 @@ defmodule Worker do
 	def process_urls(fetcher, host, id) do
 
     
-    Logger.debug "worker boss #{id} with pid #{inspect self()} requesting job"
+    # Logger.debug "worker boss #{id} with pid #{inspect self()} requesting job"
     uri = WorkHandler.request_job()
 
     Process.flag :trap_exit, true
@@ -15,11 +15,7 @@ defmodule Worker do
          WorkHandler.complete_job(uri, links)
       {:ignoring} -> 
           WorkHandler.ignoring_job()
-      # msg ->
-        # Logger.error "catchall clause #{inspect msg}"
       {:EXIT, _child_pid, _error} ->
-      #   # todo: should fail it
-        # Logger.warn(reason)
          WorkHandler.error_in_job(uri)
       # todo!
       # after 10 -> :timeout
