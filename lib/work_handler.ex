@@ -12,6 +12,8 @@ defmodule WorkHandler do
 		Process.register(main_process, :main_process)
 		Results.start_link()
 
+		FailureCounter.start_link()
+
 		GenServer.start_link(WorkHandler, [])
 	end
 
@@ -39,6 +41,15 @@ defmodule WorkHandler do
  	def ignoring_job() do
 		check_completed(Counter.decrement(:unfinished_jobs))
  	end
+
+ 	def error_in_job(uri) do
+ 		if FailureCounter.increment_and_get(uri) <= 3 do
+ 			Queue.enqueue(uri)
+ 		else
+			check_completed(Counter.decrement(:unfinished_jobs))
+		end
+ 	end
+
 
 	def complete_job(visited_uri, new_uris) do
 		Visited.mark_visited(visited_uri)

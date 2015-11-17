@@ -20,7 +20,7 @@ defmodule Worker do
       {:EXIT, _child_pid, _error} ->
       #   # todo: should fail it
         # Logger.warn(reason)
-         WorkHandler.ignoring_job()
+         WorkHandler.error_in_job(uri)
       # todo!
       # after 10 -> :timeout
     end
