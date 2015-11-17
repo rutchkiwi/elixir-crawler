@@ -43,7 +43,7 @@ defmodule WorkHandler do
  	end
 
  	def error_in_job(uri) do
- 		if FailureCounter.increment_and_get(uri) <= 3 do
+ 		if FailureCounter.increment_and_get(uri) <= 4 do
  			Queue.enqueue(uri)
  		else
 			check_completed(Counter.decrement(:unfinished_jobs))

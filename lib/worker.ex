@@ -16,7 +16,9 @@ defmodule Worker do
       {:ignoring} -> 
           WorkHandler.ignoring_job()
       {:EXIT, _child_pid, _error} ->
+          Logger.info "handling an error in worker subprocess"
          WorkHandler.error_in_job(uri)
+      _ -> Logger.error "ARRRRGGGGH"
       # todo!
       # after 10 -> :timeout
     end
