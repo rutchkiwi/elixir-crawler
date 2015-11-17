@@ -1,5 +1,6 @@
 defmodule Results do
 	# TODO: message que will fill up
+	# TODO: will miss messages if delivery is slow
 	
 	def start_link() do
 		{:ok, pid} = Task.start_link(&_wait/0)
@@ -7,6 +8,7 @@ defmodule Results do
 	end
 
 	def report_visited_uri(uri) do
+        :timer.sleep(20)
 		send(__MODULE__, {:visited, URI.to_string(uri)})
 	end
 
