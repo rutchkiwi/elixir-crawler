@@ -4,7 +4,7 @@ defmodule Worker do
 	def process_urls(fetcher, host, id) do
 
     
-    # Logger.debug "worker boss #{id} with pid #{inspect self()} requesting job"
+    # Logger.info "worker boss #{id} with pid #{inspect self()} requesting job"
     uri = WorkHandler.request_job()
 
     Process.flag :trap_exit, true
@@ -24,6 +24,7 @@ defmodule Worker do
       # after 10 -> :timeout
     end
 
+    IO.write(".")
     process_urls(fetcher, host, id)
   end
 
@@ -35,7 +36,8 @@ defmodule Worker do
       # Logger.debug "worker subprocess about to start on #{uri.host}#{uri.path}"
 
       body = fetcher.(URI.to_string(uri))
-      if body == nil, do: raise "fetching url gave ni, error"            
+      # TODO: it won't now, it'll raise an error. I guess we should check it somehow though.
+      if body == nil, do: raise "fetching url gave nil, error"            
 
       links = HtmlParser.get_links(body) |>
         Enum.map(&URI.parse/1) |>

@@ -5,11 +5,9 @@ defmodule WorkerSupervisor do
     uri = URI.parse(url_string)
     host = uri.host
 
-    children = [
-      # shouldnt be restarted
-      worker(Task, [fn -> Worker.process_urls(fetcher, host, 1) end ], id: 1),
-      worker(Task, [fn -> Worker.process_urls(fetcher, host, 2) end ], id: 2),
-    ]
+    # shouldnt be restarted
+    children = for n <- 1..10, do: worker(Task, [fn -> Worker.process_urls(fetcher, host, n) end ], id: n)
+
     WorkHandler.start_link(main_process, max_count)
 
     Supervisor.start_link(children, strategy: :one_for_one)
