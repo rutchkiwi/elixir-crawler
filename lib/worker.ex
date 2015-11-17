@@ -4,22 +4,20 @@ defmodule Worker do
 	def process_urls(fetcher, host, id) do
 
     
-    Logger.debug "worker boss #{id} requesting job"
+    Logger.debug "worker boss #{id} with pid #{inspect self()} requesting job"
     uri = WorkHandler.request_job()
 
-    # Process.flag :trap_exit, true
+    Process.flag :trap_exit, true
     caller = self()
-    {:ok, child_pid} = Task.start_link(fn -> work(fetcher, host, uri, caller) end)
-    Logger.info "self = #{inspect self()}"
+    spawn_link (fn -> work(fetcher, host, uri, caller) end)
     receive do
-      # _ ->
-        # Logger.error "catchall clause"
       {:done, links} ->
-        Logger.info("worker boss comleting job")
          WorkHandler.complete_job(uri, links)
       {:ignoring} -> 
           WorkHandler.ignoring_job()
-      {:EXIT, child_pid, :exit} ->
+      # msg ->
+        # Logger.error "catchall clause #{inspect msg}"
+      {:EXIT, _child_pid, _error} ->
       #   # todo: should fail it
         # Logger.warn(reason)
          WorkHandler.ignoring_job()
@@ -31,12 +29,11 @@ defmodule Worker do
   end
 
   def work(fetcher, host, uri, caller) do
-    Logger.info "caller = #{inspect caller}"
     if Visited.visited?(uri) do
-      Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
+      # Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
       send(caller, {:ignoring})
     else
-      Logger.debug "worker subprocess about to start on #{uri.host}#{uri.path}"
+      # Logger.debug "worker subprocess about to start on #{uri.host}#{uri.path}"
 
       body = fetcher.(URI.to_string(uri))
       if body == nil, do: raise "fetching url gave ni, error"            
@@ -47,7 +44,7 @@ defmodule Worker do
 
       # todo: seems like race conditions possible if report_visited_uri is too slow
       Results.report_visited_uri(uri)
-      Logger.debug "send #{inspect caller} done signal with #{inspect links}"
+      # Logger.debug "send #{inspect caller} done signal with #{inspect links}"
       send(caller, {:done, links})
     end
   end

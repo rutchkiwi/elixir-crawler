@@ -2,7 +2,7 @@ defmodule ErrorsInCrawlingTest do
   use ExUnit.Case
   @moduletag timeout: 500
 
-  def crashy_fetcher("http://a.com/a"), do: ~s(<a href="http://a.com/b"></a>)
+  def crashy_fetcher("http://a.com/a"), do: ~s(<a href="http://a.com/b"></a> <a href="http://a.com/c"></a>)
   def crashy_fetcher("http://a.com/b"), do: raise "boom"
   def crashy_fetcher("http://a.com/c"), do: ~s(end of line!)
    
