@@ -35,9 +35,12 @@ defmodule Worker do
     else
       # Logger.debug "worker subprocess about to start on #{uri.host}#{uri.path}"
 
-      body = fetcher.(URI.to_string(uri))
-      # TODO: it won't now, it'll raise an error. I guess we should check it somehow though.
-      if body == nil, do: raise "fetching url gave nil, error"            
+      responseInfo = fetcher.(URI.to_string(uri))
+      body = case responseInfo do
+        {:ok, resp_body} -> resp_body
+        :notfound -> Process.exit(self(), :ignoring)
+        # :error -> Process.exit(self(), {:done, links}) todo maybe?
+      end
 
       links = HtmlParser.get_links(body) |>
         Enum.map(&URI.parse/1) |>
@@ -45,8 +48,7 @@ defmodule Worker do
 
       # todo: seems like race conditions possible if report_visited_uri is too slow
       Results.report_visited_uri(uri)
-      # Logger.debug "send #{inspect caller} done signal with #{inspect links}"
-     Process.exit(self(), {:done, links})
+      Process.exit(self(), {:done, links})
     end
   end
 

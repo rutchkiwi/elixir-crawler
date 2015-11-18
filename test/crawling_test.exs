@@ -14,7 +14,11 @@ defmodule CrawlingTest do
       ~s(<a href="http://a.com/loop"></a>
         <a href="http://a.com/a"></a>)
     }
-    pages[url]
+    if Map.has_key?(pages, url) do
+      {:ok, pages[url]}
+    else
+      :notfound
+    end
   end
 
   test "empty" do
@@ -56,7 +60,7 @@ defmodule CrawlingTest do
   end
 
   def endless_fake_fetcher_func(_url) do
-    "<a href=\"http://a.com/#{:random.uniform(10000000)}\"></a>"
+    {:ok, "<a href=\"http://a.com/#{:random.uniform(10000000)}\"></a>"}
   end
 
   test "stops after given number of pages found" do
@@ -71,7 +75,11 @@ defmodule CrawlingTest do
     "http://a.com/b" =>
       ~s(<a href="http://a.com/a"></a>),
     }
-    pages[url]
+    if Map.has_key?(pages, url) do
+      {:ok, pages[url]}
+    else
+      :notfound
+    end
   end
 
   test "visited" do

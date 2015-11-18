@@ -2,9 +2,9 @@ defmodule ErrorsInCrawlingTest do
   use ExUnit.Case
   @moduletag timeout: 500
 
-  def crashy_fetcher("http://a.com/a"), do: ~s(<a href="http://a.com/b"></a> <a href="http://a.com/c"></a>)
+  def crashy_fetcher("http://a.com/a"), do: {:ok, ~s(<a href="http://a.com/b"></a> <a href="http://a.com/c"></a>)}
   def crashy_fetcher("http://a.com/b"), do: raise "boom"
-  def crashy_fetcher("http://a.com/c"), do: ~s(end of line!)
+  def crashy_fetcher("http://a.com/c"), do: {:ok, ~s(end of line!)}
    
   test "persistant error on page" do
     res = Crawler.Main.start(&crashy_fetcher/1, "http://a.com/a")
@@ -16,14 +16,14 @@ defmodule ErrorsInCrawlingTest do
 
 # TODO errors in fetch
 
-  def recovering_after_3_tries("http://a.com/a"), do: ~s(<a href="http://a.com/b"></a> <a href="http://a.com/c"></a>)
-  def recovering_after_3_tries("http://a.com/b"), do: ~s(end of line!)
+  def recovering_after_3_tries("http://a.com/a"), do: {:ok, ~s(<a href="http://a.com/b"></a> <a href="http://a.com/c"></a>)}
+  def recovering_after_3_tries("http://a.com/b"), do: {:ok, ~s(end of line!)}
   def recovering_after_3_tries("http://a.com/c") do
     case Counter.increment(:test_counter) do
       1 -> raise ">_<"
       2 -> raise "o_o"
       3 -> raise "O_O"
-      _ -> ~s(back up!)
+      _ -> {:ok, ~s(back up!)}
     end
   end
    
@@ -40,6 +40,6 @@ defmodule ErrorsInCrawlingTest do
   end
 end
 
-
+# TODO: add test for well behaved http errors
 # TODO errors in fetcher handling tests
 # TODO slow fetchers

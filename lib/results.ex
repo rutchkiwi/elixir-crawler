@@ -8,7 +8,6 @@ defmodule Results do
 	end
 
 	def report_visited_uri(uri) do
-        :timer.sleep(20)
 		send(__MODULE__, {:visited, URI.to_string(uri)})
 	end
 
