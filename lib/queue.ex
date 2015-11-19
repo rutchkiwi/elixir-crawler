@@ -12,7 +12,6 @@ defmodule Queue do
 		send(__MODULE__, {:dequeue, self()})
 		receive do 
 			{:dequeued, value} -> 
-				# Counter.decrement(:queue_size_counter)
 				value
 		end
 	end

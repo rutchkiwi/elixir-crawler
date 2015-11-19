@@ -9,27 +9,38 @@ defmodule WorkHandler do
 	def start_link(main_process, max_count, first_url, fetcher) do
 	    # todo: make this a proper superivsor maybe?
 		Agent.start_link(fn -> max_count end, name: :max_count)
+		# :timer.sleep(30)
 		Visited.start_link()
+		# :timer.sleep(30)
 		Queue.start_link()
-		# Process.register(Counter.start_link(), :in_progress_counter)
-		Process.register(Counter.start_link(), :unfinished_jobs)
+		# :timer.sleep(30)
 		Process.register(main_process, :main_process)
+		# :timer.sleep(30)
 		Results.start_link()
+		# :timer.sleep(30)
 
 		FailureCounter.start_link()
+		# :timer.sleep(30)
+
+		WorkHandler.Completions.start_link()
 
 		uri = URI.parse(first_url)
 	    host = uri.host
 
 	    # TODO: add back multiple workes
 	    # for n <- 1..2 do
-	    {:ok, worker_pid} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1) end )
+	    {:ok, worker_pid1} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1) end )
+	    {:ok, worker_pid2} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 2) end )
+	    {:ok, worker_pid3} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 3) end )
 	    # end
 
+		# :timer.sleep(30)
 	    results = _crawl(first_url)
 
 	    # Kill worker so that it does not print errors during the shutdown process
-	    Process.exit(worker_pid, :kill)
+	    Process.exit(worker_pid1, :kill)
+	    Process.exit(worker_pid2, :kill)
+	    Process.exit(worker_pid3, :kill)
 
 	    results
 	end
@@ -41,7 +52,7 @@ defmodule WorkHandler do
 		# todoL: this is a really stupid way to do this. should be baked in 
 		# somewhere?
 		# todo: url is parsed multiple times, bad
-		Counter.increment(:unfinished_jobs)
+		# tood: move into the Completions genserver?
 		Queue.enqueue(URI.parse(first_url))
 		receive do
 			{:done, urls} -> 
@@ -56,28 +67,65 @@ defmodule WorkHandler do
 		job = Queue.dequeue() # blocks
 		job
 	end
+end
+
+	# these three should be run in genserver
+
+defmodule WorkHandler.Completions do
+	require Logger
+	use GenServer
+
+	def start_link() do
+		GenServer.start_link(WorkHandler.Completions, 1, name: __MODULE__)
+	end
 
  	def ignoring_job() do
-		check_completed(Counter.decrement(:unfinished_jobs))
+ 		GenServer.cast(__MODULE__, {:ignoring_job})
  	end
 
  	def error_in_job(uri) do
- 		if FailureCounter.increment_and_get(uri) <= 4 do
+ 		GenServer.cast(__MODULE__, {:error_in_job, uri})
+ 	end
+
+	def complete_job(visited_uri, new_uris) do
+		GenServer.cast(__MODULE__, {:complete_job, visited_uri, new_uris})
+	end
+
+ 	### implemention ###############
+
+ 	def handle_cast({:ignoring_job}, unfinished_jobs) do
+ 		unfinished_jobs = unfinished_jobs - 1
+ 		Logger.debug("ingoring job. unfinished_jobs - 1 -> #{unfinished_jobs}")
+		check_completed(unfinished_jobs)
+		{:noreply, unfinished_jobs}
+ 	end
+
+ 	def handle_cast({:error_in_job, uri}, unfinished_jobs) do
+ 		# todo: failurecoutner could be moved in here
+ 		if FailureCounter.increment_and_get(uri) < 4 do
+ 			Logger.debug("error, trying again.")
  			Queue.enqueue(uri)
+			{:noreply, unfinished_jobs}
  		else
-			check_completed(Counter.decrement(:unfinished_jobs))
+ 			# We already tried this url too many times, ignore
+ 			unfinished_jobs = unfinished_jobs - 1
+			check_completed(unfinished_jobs)
+ 			Logger.debug("too many errors. unfinished_jobs - 1 -> #{unfinished_jobs}")
+			{:noreply, unfinished_jobs}
 		end
  	end
 
-
-	def complete_job(visited_uri, new_uris) do
+	def handle_cast({:complete_job, visited_uri, new_uris}, unfinished_jobs) do
 		Visited.mark_visited(visited_uri)
-		Counter.increment(:unfinished_jobs, length(new_uris))
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, &Queue.enqueue/1)
 
-		check_completed(Counter.decrement(:unfinished_jobs))
+		unfinished_jobs = unfinished_jobs + length(new_uris) - 1
+		Logger.debug("job completion. unfinished_jobs + #{length(new_uris)} - 1 -> #{unfinished_jobs}")
+		check_completed(unfinished_jobs)
+		{:noreply, unfinished_jobs}
 	end
+
 
  	def check_completed(no_unfinished_jobs) do
  		if no_unfinished_jobs <= 0 or Visited.size >= Agent.get(:max_count, &(&1)) do
@@ -85,6 +133,8 @@ defmodule WorkHandler do
 
 			# We're done. knows too much
 			send(:main_process, {:done, Results.get_all_results()})
+			# Short circuit genserver and die immidietly
+			Process.exit(self(), :normal)
 		end
 	end
 

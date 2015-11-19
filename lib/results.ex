@@ -12,6 +12,7 @@ defmodule Results do
 	end
 
 	def get_all_results() do
+		# :timer.sleep(30)
 		send(__MODULE__, {:give_results, self()})
 		receive do
 			{:give_results_answer, all_results} -> all_results

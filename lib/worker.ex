@@ -12,15 +12,15 @@ defmodule Worker do
     receive do
       # Uhhh a bit weird to trap exits like this
       {:EXIT, _child_pid, {:done, links}} ->
-         WorkHandler.complete_job(uri, links)
+         WorkHandler.Completions.complete_job(uri, links)
       {:EXIT, _child_pid, :ignoring} ->
-          WorkHandler.ignoring_job()
+          WorkHandler.Completions.ignoring_job()
       {:EXIT, _child_pid, :http_error} ->
           Logger.debug "handling well-behaved http error."
-          WorkHandler.error_in_job(uri)
+          WorkHandler.Completions.error_in_job(uri)
       {:EXIT, _child_pid, error} ->
           Logger.warn "Handling an error in worker subprocess: #{inspect error}"
-         WorkHandler.error_in_job(uri)
+         WorkHandler.Completions.error_in_job(uri)
       # todo!
       # after 10 -> :timeout
     end
