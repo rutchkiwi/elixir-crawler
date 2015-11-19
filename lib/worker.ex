@@ -8,18 +8,19 @@ defmodule Worker do
     uri = WorkHandler.request_job()
 
     Process.flag :trap_exit, true
-    caller = self()
-    spawn_link (fn -> work(fetcher, host, uri, caller) end)
+    spawn_link (fn -> work(fetcher, host, uri) end)
     receive do
       # Uhhh a bit weird to trap exits like this
       {:EXIT, _child_pid, {:done, links}} ->
          WorkHandler.complete_job(uri, links)
       {:EXIT, _child_pid, :ignoring} ->
           WorkHandler.ignoring_job()
+      {:EXIT, _child_pid, :http_error} ->
+          Logger.debug "handling well-behaved http error."
+          WorkHandler.error_in_job(uri)
       {:EXIT, _child_pid, error} ->
-          Logger.info "handling an error in worker subprocess: #{inspect error}"
+          Logger.warn "Handling an error in worker subprocess: #{inspect error}"
          WorkHandler.error_in_job(uri)
-      _ -> Logger.error "ARRRRGGGGH"
       # todo!
       # after 10 -> :timeout
     end
@@ -28,7 +29,7 @@ defmodule Worker do
     process_urls(fetcher, host, id)
   end
 
-  def work(fetcher, host, uri, caller) do
+  def work(fetcher, host, uri) do
     if Visited.visited?(uri) do
       # Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
       Process.exit(self(), :ignoring)
@@ -39,7 +40,7 @@ defmodule Worker do
       body = case responseInfo do
         {:ok, resp_body} -> resp_body
         :notfound -> Process.exit(self(), :ignoring)
-        # :error -> Process.exit(self(), {:done, links}) todo maybe?
+        :error -> Process.exit(self(), :http_error)
       end
 
       links = HtmlParser.get_links(body) |>
