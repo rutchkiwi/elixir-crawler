@@ -19,9 +19,6 @@ defmodule WorkHandler do
 		Results.start_link()
 		# :timer.sleep(30)
 
-		FailureCounter.start_link()
-		# :timer.sleep(30)
-
 		WorkHandler.Completions.start_link()
 
 		uri = URI.parse(first_url)
@@ -69,14 +66,13 @@ defmodule WorkHandler do
 	end
 end
 
-	# these three should be run in genserver
-
 defmodule WorkHandler.Completions do
 	require Logger
 	use GenServer
 
 	def start_link() do
-		GenServer.start_link(WorkHandler.Completions, 1, name: __MODULE__)
+		#                               {unfinished jobs, failure counts}
+		GenServer.start_link(WorkHandler.Completions, {1, %{}}, name: __MODULE__)
 	end
 
  	def ignoring_job() do
@@ -93,29 +89,33 @@ defmodule WorkHandler.Completions do
 
  	### implemention ###############
 
- 	def handle_cast({:ignoring_job}, unfinished_jobs) do
+ 	def handle_cast({:ignoring_job}, {unfinished_jobs, failures}) do
  		unfinished_jobs = unfinished_jobs - 1
  		Logger.debug("ingoring job. unfinished_jobs - 1 -> #{unfinished_jobs}")
 		check_completed(unfinished_jobs)
-		{:noreply, unfinished_jobs}
+		{:noreply, {unfinished_jobs, failures}}
  	end
 
- 	def handle_cast({:error_in_job, uri}, unfinished_jobs) do
+ 	def handle_cast({:error_in_job, uri}, {unfinished_jobs, failures}) do
  		# todo: failurecoutner could be moved in here
- 		if FailureCounter.increment_and_get(uri) < 4 do
+ 		failures_for_uri = Map.get(failures, uri, 0)
+ 		if failures_for_uri < 3 do
  			Logger.debug("error, trying again.")
  			Queue.enqueue(uri)
-			{:noreply, unfinished_jobs}
+			{
+				:noreply,
+				{unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1)}
+			}
  		else
  			# We already tried this url too many times, ignore
  			unfinished_jobs = unfinished_jobs - 1
 			check_completed(unfinished_jobs)
  			Logger.debug("too many errors. unfinished_jobs - 1 -> #{unfinished_jobs}")
-			{:noreply, unfinished_jobs}
+			{:noreply, {unfinished_jobs, failures}}
 		end
  	end
 
-	def handle_cast({:complete_job, visited_uri, new_uris}, unfinished_jobs) do
+	def handle_cast({:complete_job, visited_uri, new_uris}, {unfinished_jobs, failures}) do
 		Visited.mark_visited(visited_uri)
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, &Queue.enqueue/1)
@@ -123,7 +123,7 @@ defmodule WorkHandler.Completions do
 		unfinished_jobs = unfinished_jobs + length(new_uris) - 1
 		Logger.debug("job completion. unfinished_jobs + #{length(new_uris)} - 1 -> #{unfinished_jobs}")
 		check_completed(unfinished_jobs)
-		{:noreply, unfinished_jobs}
+		{:noreply, {unfinished_jobs, failures}}
 	end
 
 
