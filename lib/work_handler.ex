@@ -7,7 +7,6 @@ defmodule WorkHandler do
 	# TOOD: this is a bit weird. separate setup, cleanup and work cleanly 
 
 	def start_link(main_process, max_count, first_url, fetcher) do
-	    # todo: make this a proper superivsor maybe?
 		Agent.start_link(fn -> max_count end, name: :max_count)
 		# :timer.sleep(30)
 		Visited.start_link()
@@ -32,7 +31,10 @@ defmodule WorkHandler do
 	    # end
 
 		# :timer.sleep(30)
-	    results = _crawl(first_url)
+		Queue.enqueue(uri)
+	    results = receive do
+			{:done, urls} -> urls
+		end
 
 	    # Kill worker so that it does not print errors during the shutdown process
 	    Process.exit(worker_pid1, :kill)
@@ -40,22 +42,6 @@ defmodule WorkHandler do
 	    Process.exit(worker_pid3, :kill)
 
 	    results
-	end
-
-	# blocking
-	# main process is the only process who should call this!!! 
-	# thats quite weird, todo: check that it actually is
-	def _crawl(first_url) do
-		# todoL: this is a really stupid way to do this. should be baked in 
-		# somewhere?
-		# todo: url is parsed multiple times, bad
-		# tood: move into the Completions genserver?
-		Queue.enqueue(URI.parse(first_url))
-		receive do
-			{:done, urls} -> 
-				# Logger.info "crawling done (cleanup now?)"
-				urls
-		end
 	end
 
 	# For workers
@@ -74,6 +60,8 @@ defmodule WorkHandler.Completions do
 		#                               {unfinished jobs, failure counts}
 		GenServer.start_link(WorkHandler.Completions, {1, %{}}, name: __MODULE__)
 	end
+
+	### For workers ################
 
  	def ignoring_job() do
  		GenServer.cast(__MODULE__, {:ignoring_job})

@@ -1,5 +1,4 @@
 defmodule Counter do
-	# TODO: move to test or remove alltogether!
 	use GenServer
 	require Logger
 
