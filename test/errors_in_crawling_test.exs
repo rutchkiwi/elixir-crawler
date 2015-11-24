@@ -1,5 +1,6 @@
 defmodule ErrorsInCrawlingTest do
   use ExUnit.Case
+  require Counter
   @moduletag timeout: 500
   
   setup do

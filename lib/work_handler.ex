@@ -97,7 +97,6 @@ defmodule WorkHandler.Completions do
  	end
 
  	def handle_cast({:error_in_job, uri}, {unfinished_jobs, failures}) do
- 		# todo: failurecoutner could be moved in here
  		failures_for_uri = Map.get(failures, uri, 0)
  		if failures_for_uri < 3 do
  			Logger.debug("error, trying again.")
