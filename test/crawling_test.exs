@@ -1,6 +1,8 @@
 defmodule CrawlingTest do
   use ExUnit.Case
   @moduletag timeout: 500
+  # @moduletag capture_log: true
+
 
   def fake_fetcher_func(url) do
    pages = %{

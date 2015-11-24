@@ -12,9 +12,14 @@ defmodule Crawler.CLI do
 end
 
 defmodule Crawler.Main do
+	require Logger
+
 	def start(fetcher, url_string, max_count \\ 20) do
-		WorkHandler.start_link(self(), max_count, url_string, fetcher)
-		# WorkHandler.crawl(url_string)
+		res = WorkHandler.start_and_crawl(max_count, url_string, fetcher)
+		Logger.debug "res received"
+		:timer.sleep(30)
+		Logger.debug "slept"
+		res
 	end
 end
 
