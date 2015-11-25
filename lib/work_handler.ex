@@ -7,6 +7,8 @@ defmodule WorkHandler do
 	# TOOD: this is a bit weird. separate setup, cleanup and work cleanly 
 
 	def start_and_crawl(max_count, first_url, fetcher) do
+		# TODO: when this is called, main process gets linked to all these children. This needs to run in it's own thread, so that it can be killed and it's children with it.
+		# TODO: does children get killed when parent dies?
 		Visited.start_link()
 		# :timer.sleep(30)
 		Queue.start_link()
@@ -14,7 +16,6 @@ defmodule WorkHandler do
 		Process.register(self(), :main_process)
 		# :timer.sleep(30)
 		Results.start_link()
-		# :timer.sleep(30)
 
 		WorkHandler.Completions.start_link(max_count)
 
@@ -38,6 +39,8 @@ defmodule WorkHandler do
 		end
 		Logger.debug "results received"
 
+	    Visited.stop()
+		Logger.debug "visited was killed"
 
 	    # Kill worker so that it does not print errors during the shutdown process
 		# :timer.sleep(100)
@@ -46,6 +49,8 @@ defmodule WorkHandler do
 	    Process.exit(worker_pid3, :normal)
 
 		Logger.debug "workers are now killed"
+	    
+
 
 	    results
 	end

@@ -17,7 +17,6 @@ defmodule Crawler.Main do
 	def start(fetcher, url_string, max_count \\ 20) do
 		res = WorkHandler.start_and_crawl(max_count, url_string, fetcher)
 		Logger.debug "res received"
-		:timer.sleep(30)
 		Logger.debug "slept"
 		res
 	end

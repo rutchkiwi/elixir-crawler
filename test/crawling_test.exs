@@ -1,5 +1,6 @@
 defmodule CrawlingTest do
   use ExUnit.Case
+  # , async: true
   @moduletag timeout: 500
   # @moduletag capture_log: true
 

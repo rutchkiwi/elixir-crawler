@@ -1,22 +1,34 @@
 defmodule Visited do
+	require Logger
 	
 	####### interface #######
 	
 	def start_link() do
 		{:ok, pid} = Task.start_link(Visited, :run, [HashSet.new])
-		Process.register(pid, __MODULE__)
+		Logger.info("started visited task, pid is #{inspect pid}. self is #{inspect self()}")
+		# :timer.sleep(10)
+		if ({true, nil} == {Process.alive?(pid), Process.whereis(__MODULE__)}) do
+			Process.register(pid, __MODULE__)
+		else
+			Logger.warn("found a pre-exisiting visited process. pid for that one is #{inspect Process.whereis(__MODULE__)}. self is #{inspect self()}")
+			raise "WTF!!"
+		end
+	end
+
+	def stop() do
+		pid = Process.whereis(__MODULE__)
+		Process.unlink(pid)
+		Process.exit(pid, :kill)
 	end
 
 	def mark_visited(url) do
-		{:ok, pid} = get_pid()
-		send(pid, {:mark_visited, url})
+		send(__MODULE__, {:mark_visited, url})
 	end
 
 	def get_visited() do
-		{:ok, pid} = get_pid()
 		# make a random id to make sure we don't answer someone else. neccessary? prob not?? but safe
 		question_id = :random.uniform(1000000000)
-		send(pid, {:get_visited, self, question_id})
+		send(__MODULE__, {:get_visited, self, question_id})
 		receive do
 			{:get_visited_reply, ^question_id, visited} -> visited
 		end
@@ -32,15 +44,6 @@ defmodule Visited do
 
 	####### implementation #######
 
-	def get_pid() do
-		pid = Process.whereis(__MODULE__)
-		if pid != nil do
-			{:ok, pid} 
-		else 
-			{:error}
-		end
-	end
-
 	def run(visited_set) do
 		receive do
 			{:mark_visited, url} ->
@@ -49,5 +52,6 @@ defmodule Visited do
 				send(sender, {:get_visited_reply, id, visited_set})
 				run(visited_set)
 		end
+		Logger.info("ran visited task")
 	end
 end
