@@ -15,9 +15,8 @@ defmodule Crawler.Main do
 	require Logger
 
 	def start(fetcher, url_string, max_count \\ 20) do
+		Logger.debug "main process self is #{inspect self()}. Registered processes are #{inspect(Process.registered())}"
 		res = WorkHandler.start_and_crawl(max_count, url_string, fetcher)
-		Logger.debug "res received"
-		Logger.debug "slept"
 		res
 	end
 end

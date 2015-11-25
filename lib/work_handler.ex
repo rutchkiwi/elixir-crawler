@@ -39,8 +39,8 @@ defmodule WorkHandler do
 		end
 		Logger.debug "results received"
 
-	    Visited.stop()
-		Logger.debug "visited was killed"
+	 #    Visited.stop()
+		# Logger.debug "visited was killed"
 
 	    # Kill worker so that it does not print errors during the shutdown process
 		# :timer.sleep(100)

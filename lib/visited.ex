@@ -4,7 +4,7 @@ defmodule Visited do
 	####### interface #######
 	
 	def start_link() do
-		{:ok, pid} = Task.start_link(Visited, :run, [HashSet.new])
+		{:ok, pid} = Task.start(Visited, :run, [HashSet.new])
 		Logger.info("started visited task, pid is #{inspect pid}. self is #{inspect self()}")
 		# :timer.sleep(10)
 		if ({true, nil} == {Process.alive?(pid), Process.whereis(__MODULE__)}) do
