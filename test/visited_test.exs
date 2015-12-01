@@ -5,34 +5,32 @@ defmodule VisitedTest do
   @b URI.parse("http://b.com")
   @c URI.parse("http://c.com")
   
-  setup do
-  	Visited.start_link()
-    :ok
-  end
-
   test "empty" do
-  	assert not Visited.visited?("a")
-    assert Visited.size() == 0
+    pid = Visited.start_link()
+    assert not Visited.visited?(pid, "a")
+    assert Visited.size(pid) == 0
   end
 
   test "insert" do
-    assert not Visited.visited?(@a)
-    Visited.mark_visited(@a)
-    assert Visited.visited?(@a)
-    assert Visited.size() == 1
+    pid = Visited.start_link()
+    assert not Visited.visited?(pid, @a)
+    Visited.mark_visited(pid, @a)
+    assert Visited.visited?(pid, @a)
+    assert Visited.size(pid) == 1
   end
 
   test "insert multiple" do
-    assert not Visited.visited?(@a)
-    Visited.mark_visited(@a)
-    assert Visited.visited?(@a)
+    pid = Visited.start_link()
+    assert not Visited.visited?(pid, @a)
+    Visited.mark_visited(pid, @a)
+    assert Visited.visited?(pid, @a)
 
-    Visited.mark_visited(@b)
-    Visited.mark_visited(@c)
+    Visited.mark_visited(pid, @b)
+    Visited.mark_visited(pid, @c)
 
-    assert Visited.visited?(@a)
-    assert Visited.visited?(@b)
-    assert Visited.visited?(@c)
-    assert Visited.size() == 3
+    assert Visited.visited?(pid, @a)
+    assert Visited.visited?(pid, @b)
+    assert Visited.visited?(pid, @c)
+    assert Visited.size(pid) == 3
   end
 end

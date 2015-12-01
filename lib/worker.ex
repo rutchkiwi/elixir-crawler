@@ -1,14 +1,14 @@
 defmodule Worker do
   require Logger
 
-	def process_urls(fetcher, host, id) do
+	def process_urls(fetcher, host, id, visited_pid) do
 
     
     # Logger.info "worker boss #{id} with pid #{inspect self()} requesting job"
     uri = WorkHandler.request_job()
 
     Process.flag :trap_exit, true
-    spawn_link (fn -> work(fetcher, host, uri) end)
+    spawn_link (fn -> work(fetcher, host, uri, visited_pid) end)
     receive do
       # Uhhh a bit weird to trap exits like this
       {:EXIT, _child_pid, {:done, links}} ->
@@ -26,11 +26,11 @@ defmodule Worker do
     end
 
     IO.write(".")
-    process_urls(fetcher, host, id)
+    process_urls(fetcher, host, id, visited_pid)
   end
 
-  def work(fetcher, host, uri) do
-    if Visited.visited?(uri) do
+  def work(fetcher, host, uri, visited_pid) do
+    if Visited.visited?(visited_pid, uri) do
       # Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
       Process.exit(self(), :ignoring)
     else

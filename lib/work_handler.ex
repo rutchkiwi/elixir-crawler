@@ -18,7 +18,8 @@ defmodule WorkHandler do
 		# TODO: does children get killed when parent dies?
 		Logger.info "crawler process going in #{inspect self()}"
 
-		Visited.start_link()
+		visited_pid = Visited.start_link()
+		Logger.info "started visited link #{inspect self()}"
 		# :timer.sleep(30)
 		Queue.start_link()
 		# :timer.sleep(30)
@@ -26,16 +27,16 @@ defmodule WorkHandler do
 		# :timer.sleep(30)
 		Results.start_link()
 
-		WorkHandler.Completions.start_link(max_count)
+		WorkHandler.Completions.start_link(max_count, visited_pid)
 
 		uri = URI.parse(first_url)
 	    host = uri.host
 
 	    # TODO: add back multiple workes
 	    # for n <- 1..2 do
-	    {:ok, worker_pid1} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1) end )
-	    {:ok, worker_pid2} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 2) end )
-	    {:ok, worker_pid3} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 3) end )
+	    {:ok, worker_pid1} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1, visited_pid) end )
+	    {:ok, worker_pid2} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 2, visited_pid) end )
+	    {:ok, worker_pid3} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 3, visited_pid) end )
 	    # end
 
 
@@ -61,7 +62,7 @@ defmodule WorkHandler do
 		Logger.debug "workers are now killed"
 	    
 	    # todo: is this really how to do it? supervisor instead?
-	    Visited.stop()
+	    Visited.stop(visited_pid)
 	    Queue.stop()
 	    Logger.info "done killing, returning"
 	    results
@@ -79,9 +80,11 @@ defmodule WorkHandler.Completions do
 	require Logger
 	use GenServer
 
-	def start_link(max_count) do
+	def start_link(max_count, visited_pid) do
 		# {unfinished jobs, failure counts, max_count}
-		state = {1, %{}, max_count}
+		# todo: state should be a struct or something
+		Logger.warn("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
+		state = {1, %{}, max_count, visited_pid}
 		GenServer.start_link(WorkHandler.Completions, state, name: __MODULE__)
 	end
 
@@ -101,17 +104,17 @@ defmodule WorkHandler.Completions do
 
  	### implemention ###############
 
- 	def handle_cast({:ignoring_job}, {unfinished_jobs, failures, max_count}) do
+ 	def handle_cast({:ignoring_job}, {unfinished_jobs, failures, max_count, visited_pid}) do
  		Logger.debug("ingoring job. unfinished_jobs before: #{unfinished_jobs}")
  		unfinished_jobs = unfinished_jobs - 1
  		Logger.debug("ingoring job. unfinished_jobs - 1 -> #{unfinished_jobs}")
-		check_completed(unfinished_jobs, max_count)
+		check_completed(unfinished_jobs, max_count, visited_pid)
 
-		{:noreply, {unfinished_jobs, failures, max_count}}
+		{:noreply, {unfinished_jobs, failures, max_count, visited_pid}}
  	end
 
  	def handle_cast({:error_in_job, uri}, state) do
- 		{unfinished_jobs, failures, max_count} = state
+ 		{unfinished_jobs, failures, max_count, visited_pid} = state
 
  		failures_for_uri = Map.get(failures, uri, 0)
  		if failures_for_uri < 3 do
@@ -119,33 +122,35 @@ defmodule WorkHandler.Completions do
  			Queue.enqueue(uri)
 			{
 				:noreply,
-				{unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1), max_count}
+				{unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1), max_count, visited_pid}
 			}
  		else
  			# We already tried this url too many times, ignore
  			unfinished_jobs = unfinished_jobs - 1
-			check_completed(unfinished_jobs, max_count)
+			check_completed(unfinished_jobs, max_count, visited_pid)
  			Logger.debug("too many errors. unfinished_jobs - 1 -> #{unfinished_jobs}")
 			{:noreply, state}
 		end
  	end
 
 	def handle_cast({:complete_job, visited_uri, new_uris},
-					 {unfinished_jobs, failures, max_count}) do
+					 state) do
+		{unfinished_jobs, failures, max_count, visited_pid} = state
 
-		Visited.mark_visited(visited_uri)
+		Visited.mark_visited(visited_pid, visited_uri)
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, &Queue.enqueue/1)
 
 		unfinished_jobs = unfinished_jobs + length(new_uris) - 1
 		Logger.debug("job completion. unfinished_jobs + #{length(new_uris)} - 1 -> #{unfinished_jobs}")
-		check_completed(unfinished_jobs, max_count)
-		{:noreply, {unfinished_jobs, failures, max_count}}
+		check_completed(unfinished_jobs, max_count, visited_pid)
+		{:noreply, {unfinished_jobs, failures, max_count, visited_pid}}
 	end
 
 
- 	def check_completed(no_unfinished_jobs, max_count) do
- 		if no_unfinished_jobs <= 0 or Visited.size >= max_count do
+ 	def check_completed(no_unfinished_jobs, max_count, visited_pid) do
+ 		# todo: maybe size should be the size of results instead?
+ 		if no_unfinished_jobs <= 0 or Visited.size(visited_pid) >= max_count do
 			Logger.debug "completed last job, sending done msg. workhandler #{inspect self()}"
 
 			# We're done. knows too much

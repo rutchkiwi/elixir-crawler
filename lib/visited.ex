@@ -5,48 +5,41 @@ defmodule Visited do
 	
 	def start_link() do
 		{:ok, pid} = Task.start_link(Visited, :run, [HashSet.new])
-		Logger.info("started visited task, pid is #{inspect pid}. self is #{inspect self()}")
-		# :timer.sleep(10)
-		if ({true, nil} == {Process.alive?(pid), Process.whereis(__MODULE__)}) do
-			Process.register(pid, __MODULE__)
-		else
-			Logger.warn("found a pre-exisiting visited process. pid for that one is #{inspect Process.whereis(__MODULE__)}. self is #{inspect self()}")
-			raise "WTF!!"
-		end
+		Logger.info("starting visited task, pid is #{inspect pid}. self is #{inspect self()}")
+		pid
 	end
 
-	def stop() do
-		pid = Process.whereis(__MODULE__)
+	def stop(pid) do
 		# todo: this is weird
 		Process.unlink(pid)
-		Process.unregister(__MODULE__)
 		Process.exit(pid, :kill)
 	end
 
-	def mark_visited(url) do
-		send(__MODULE__, {:mark_visited, url})
+	def mark_visited(pid, url) do
+		send(pid, {:mark_visited, url})
 	end
 
-	def get_visited() do
+	def get_visited(pid) do
 		# make a random id to make sure we don't answer someone else. neccessary? prob not?? but safe
 		question_id = :random.uniform(1000000000)
-		send(__MODULE__, {:get_visited, self, question_id})
+		send(pid, {:get_visited, self, question_id})
 		receive do
 			{:get_visited_reply, ^question_id, visited} -> visited
 		end
 	end
 
-	def visited?(url) do
-		Set.member?(get_visited(), url)
+	def visited?(pid, url) do
+		Set.member?(get_visited(pid), url)
 	end
 
-	def size() do
-		Set.size(get_visited())
+	def size(pid) do
+		Set.size(get_visited(pid))
 	end
 
 	####### implementation #######
 
 	def run(visited_set) do
+		#TODO: genserver?
 		receive do
 			{:mark_visited, url} ->
 				run(Set.put(visited_set, url))

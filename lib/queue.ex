@@ -10,7 +10,7 @@ defmodule Queue do
 			raise "TOO MANY QUEUES WTF!!"
 		end
 		Process.register(pid, __MODULE__)
-		Logger.info("started visited task, pid is #{inspect pid}. self is #{inspect self()}")
+		Logger.info("started queue task, pid is #{inspect pid}. self is #{inspect self()}")
 		{:ok, pid}
 	end
 
