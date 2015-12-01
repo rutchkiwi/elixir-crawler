@@ -25,7 +25,7 @@ defmodule Worker do
       # after 10 -> :timeout
     end
 
-    IO.write(".")
+    # IO.write(".")
     process_urls(fetcher, host, id, visited_pid)
   end
 

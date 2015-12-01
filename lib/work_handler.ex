@@ -80,11 +80,15 @@ defmodule WorkHandler.Completions do
 	require Logger
 	use GenServer
 
+	defmodule State do
+    	defstruct unfinished_jobs: 1, failures: %{}, max_count: nil, visited_pid: nil
+  	end
+
 	def start_link(max_count, visited_pid) do
 		# {unfinished jobs, failure counts, max_count}
 		# todo: state should be a struct or something
 		Logger.warn("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
-		state = {1, %{}, max_count, visited_pid}
+		state = %State{max_count: max_count, visited_pid: visited_pid}
 		GenServer.start_link(WorkHandler.Completions, state, name: __MODULE__)
 	end
 
@@ -104,53 +108,58 @@ defmodule WorkHandler.Completions do
 
  	### implemention ###############
 
- 	def handle_cast({:ignoring_job}, {unfinished_jobs, failures, max_count, visited_pid}) do
- 		Logger.debug("ingoring job. unfinished_jobs before: #{unfinished_jobs}")
- 		unfinished_jobs = unfinished_jobs - 1
- 		Logger.debug("ingoring job. unfinished_jobs - 1 -> #{unfinished_jobs}")
-		check_completed(unfinished_jobs, max_count, visited_pid)
+ 	def handle_cast({:ignoring_job}, old_state) do
+ 		new_state = %State{old_state | unfinished_jobs: old_state.unfinished_jobs - 1}
+ 		Logger.debug("ignoring job. unfinished_jobs - 1 -> #{new_state.unfinished_jobs}")
 
-		{:noreply, {unfinished_jobs, failures, max_count, visited_pid}}
+		check_completed(new_state)
+
+		{:noreply, new_state}
  	end
 
- 	def handle_cast({:error_in_job, uri}, state) do
- 		{unfinished_jobs, failures, max_count, visited_pid} = state
+ 	def handle_cast({:error_in_job, uri}, old_state) do
+ 		# {unfinished_jobs, failures, max_count, visited_pid} = state
 
- 		failures_for_uri = Map.get(failures, uri, 0)
+ 		failures_for_uri = Map.get(old_state.failures, uri, 0)
  		if failures_for_uri < 3 do
  			Logger.debug("error, trying again.")
  			Queue.enqueue(uri)
 			{
 				:noreply,
-				{unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1), max_count, visited_pid}
+				# {unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1), max_count, visited_pid}
+				%State{old_state | failures: Map.put(old_state.failures, uri, failures_for_uri + 1)}
 			}
  		else
  			# We already tried this url too many times, ignore
- 			unfinished_jobs = unfinished_jobs - 1
-			check_completed(unfinished_jobs, max_count, visited_pid)
- 			Logger.debug("too many errors. unfinished_jobs - 1 -> #{unfinished_jobs}")
-			{:noreply, state}
+ 			# unfinished_jobs = unfinished_jobs - 1
+	 		new_state = %State{old_state | unfinished_jobs: old_state.unfinished_jobs - 1}
+
+			check_completed(new_state)
+ 			Logger.debug("too many errors. unfinished_jobs - 1 -> #{new_state.unfinished_jobs}")
+			{:noreply, new_state}
 		end
  	end
 
-	def handle_cast({:complete_job, visited_uri, new_uris},
-					 state) do
-		{unfinished_jobs, failures, max_count, visited_pid} = state
+	def handle_cast({:complete_job, visited_uri, new_uris}, old_state) do
+		# {unfinished_jobs, failures, max_count, visited_pid} = state
 
-		Visited.mark_visited(visited_pid, visited_uri)
+		Visited.mark_visited(old_state.visited_pid, visited_uri)
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, &Queue.enqueue/1)
 
-		unfinished_jobs = unfinished_jobs + length(new_uris) - 1
-		Logger.debug("job completion. unfinished_jobs + #{length(new_uris)} - 1 -> #{unfinished_jobs}")
-		check_completed(unfinished_jobs, max_count, visited_pid)
-		{:noreply, {unfinished_jobs, failures, max_count, visited_pid}}
+		# unfinished_jobs = unfinished_jobs + length(new_uris) - 1
+ 		new_state = %State{old_state | unfinished_jobs: 
+ 											old_state.unfinished_jobs + length(new_uris) - 1}
+
+		Logger.debug("job completion. unfinished_jobs + #{length(new_uris)} - 1 -> #{new_state.unfinished_jobs}")
+		check_completed(new_state)
+		{:noreply, new_state}
 	end
 
 
- 	def check_completed(no_unfinished_jobs, max_count, visited_pid) do
+ 	def check_completed(state) do
  		# todo: maybe size should be the size of results instead?
- 		if no_unfinished_jobs <= 0 or Visited.size(visited_pid) >= max_count do
+ 		if state.unfinished_jobs <= 0 or Visited.size(state.visited_pid) >= state.max_count do
 			Logger.debug "completed last job, sending done msg. workhandler #{inspect self()}"
 
 			# We're done. knows too much
