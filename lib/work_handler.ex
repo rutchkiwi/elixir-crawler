@@ -7,8 +7,17 @@ defmodule WorkHandler do
 	# TOOD: this is a bit weird. separate setup, cleanup and work cleanly 
 
 	def start_and_crawl(max_count, first_url, fetcher) do
+		Logger.info "about to start crawler thread"
+		main_task = Task.async(
+			WorkHandler, :_start_and_crawl, [max_count, first_url, fetcher])
+		Task.await(main_task)
+	end
+
+	def _start_and_crawl(max_count, first_url, fetcher) do
 		# TODO: when this is called, main process gets linked to all these children. This needs to run in it's own thread, so that it can be killed and it's children with it.
 		# TODO: does children get killed when parent dies?
+		Logger.info "crawler process going in #{inspect self()}"
+
 		Visited.start_link()
 		# :timer.sleep(30)
 		Queue.start_link()
@@ -39,19 +48,22 @@ defmodule WorkHandler do
 		end
 		Logger.debug "results received"
 
-	 #    Visited.stop()
-		# Logger.debug "visited was killed"
 
 	    # Kill worker so that it does not print errors during the shutdown process
 		# :timer.sleep(100)
-	    Process.exit(worker_pid1, :normal)
-	    Process.exit(worker_pid2, :normal)
-	    Process.exit(worker_pid3, :normal)
+		Process.unlink(worker_pid1)
+		Process.unlink(worker_pid2)
+		Process.unlink(worker_pid3)
+	    Process.exit(worker_pid1, :kill)
+	    Process.exit(worker_pid2, :kill)
+	    Process.exit(worker_pid3, :kill)
 
 		Logger.debug "workers are now killed"
 	    
-
-
+	    # todo: is this really how to do it? supervisor instead?
+	    Visited.stop()
+	    Queue.stop()
+	    Logger.info "done killing, returning"
 	    results
 	end
 

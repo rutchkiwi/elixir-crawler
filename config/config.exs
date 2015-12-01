@@ -12,7 +12,7 @@ use Mix.Config
 #
     config :logger, :console,
       # level: :info,
-      level: :debug,
+      level: :warn,
       format: "$time [$level] $message\n"
 
 # It is also possible to import configuration files, relative to this
