@@ -4,16 +4,15 @@ defmodule Results do
 	
 	def start_link() do
 		{:ok, pid} = Task.start_link(&_wait/0)
-		Process.register(pid, __MODULE__)
+		pid
 	end
 
-	def report_visited_uri(uri) do
-		send(__MODULE__, {:visited, URI.to_string(uri)})
+	def report_visited_uri(pid, uri) do
+		send(pid, {:visited, URI.to_string(uri)})
 	end
 
-	def get_all_results() do
-		# :timer.sleep(30)
-		send(__MODULE__, {:give_results, self()})
+	def get_all_results(pid) do
+		send(pid, {:give_results, self()})
 		receive do
 			{:give_results_answer, all_results} -> all_results
 		end

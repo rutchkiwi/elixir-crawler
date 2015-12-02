@@ -25,18 +25,18 @@ defmodule WorkHandler do
 		# :timer.sleep(30)
 
 		# :timer.sleep(30)
-		Results.start_link()
+		results_pid = Results.start_link()
 
-		WorkHandler.Completions.start_link(max_count, visited_pid, queue_pid)
+		WorkHandler.Completions.start_link(max_count, visited_pid, queue_pid, results_pid)
 
 		uri = URI.parse(first_url)
 	    host = uri.host
 
 	    # TODO: add back multiple workes
 	    # for n <- 1..2 do
-	    {:ok, worker_pid1} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1, visited_pid, queue_pid) end )
-	    {:ok, worker_pid2} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 2, visited_pid, queue_pid) end )
-	    {:ok, worker_pid3} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 3, visited_pid, queue_pid) end )
+	    worker_pid1 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid)
+	    worker_pid2 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid)
+	    worker_pid3 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid)
 	    # end
 
 
@@ -81,14 +81,14 @@ defmodule WorkHandler.Completions do
 	use GenServer
 
 	defmodule State do
-    	defstruct unfinished_jobs: 1, failures: %{}, max_count: nil, visited_pid: nil, queue_pid: nil, main_process: nil
+    	defstruct unfinished_jobs: 1, failures: %{}, max_count: nil, visited_pid: nil, queue_pid: nil, main_process: nil, results_pid: nil
   	end
 
-	def start_link(max_count, visited_pid, queue_pid) do
+	def start_link(max_count, visited_pid, queue_pid, results_pid) do
 		# {unfinished jobs, failure counts, max_count}
 		# todo: state should be a struct or something
 		# Logger.warn("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
-		state = %State{max_count: max_count, visited_pid: visited_pid, queue_pid: queue_pid, main_process: self()}
+		state = %State{max_count: max_count, visited_pid: visited_pid, queue_pid: queue_pid, main_process: self(), results_pid: results_pid}
 		GenServer.start_link(WorkHandler.Completions, state, name: __MODULE__)
 	end
 
@@ -163,7 +163,7 @@ defmodule WorkHandler.Completions do
 			Logger.debug "completed last job, sending done msg. workhandler #{inspect self()}"
 
 			# We're done. knows too much
-			send(state.main_process, {:done, Results.get_all_results()})
+			send(state.main_process, {:done, Results.get_all_results(state.results_pid)})
 			# Short circuit genserver and die immidietly
 			Logger.debug "kill genserver workhandler #{inspect self()}"
 			Process.exit(self(), :normal)
