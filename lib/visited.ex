@@ -9,12 +9,6 @@ defmodule Visited do
 		pid
 	end
 
-	def stop(pid) do
-		# todo: this is weird
-		Process.unlink(pid)
-		Process.exit(pid, :kill)
-	end
-
 	def mark_visited(pid, url) do
 		send(pid, {:mark_visited, url})
 	end

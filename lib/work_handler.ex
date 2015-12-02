@@ -50,19 +50,24 @@ defmodule WorkHandler do
 		Logger.debug "results received"
 
 
-	    # Kill worker so that it does not print errors during the shutdown process
-		# :timer.sleep(100)
-		Process.unlink(worker_pid1)
-		Process.unlink(worker_pid2)
-		Process.unlink(worker_pid3)
-	    Process.exit(worker_pid1, :kill)
-	    Process.exit(worker_pid2, :kill)
-	    Process.exit(worker_pid3, :kill)
+	    # Kill stuff so that it does not print errors during the shutdown process
+
+		pids = [
+			worker_pid1,
+			worker_pid2,
+			worker_pid3,
+
+			results_pid,
+			queue_pid,
+			visited_pid,
+		]
+
+		Enum.map(pids, &Process.unlink/1)
+		Enum.map(pids, &(Process.exit(&1, :kill)))
 
 		Logger.debug "workers are now killed"
 	    
 	    # todo: is this really how to do it? supervisor instead?
-	    Visited.stop(visited_pid)
 	    # Queue.stop()
 	    Logger.info "done killing, returning"
 	    results
