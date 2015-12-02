@@ -21,29 +21,29 @@ defmodule WorkHandler do
 		visited_pid = Visited.start_link()
 		Logger.info "started visited link #{inspect self()}"
 		# :timer.sleep(30)
-		Queue.start_link()
+		queue_pid = Queue.start_link()
 		# :timer.sleep(30)
 		Process.register(self(), :main_process)
 		# :timer.sleep(30)
 		Results.start_link()
 
-		WorkHandler.Completions.start_link(max_count, visited_pid)
+		WorkHandler.Completions.start_link(max_count, visited_pid, queue_pid)
 
 		uri = URI.parse(first_url)
 	    host = uri.host
 
 	    # TODO: add back multiple workes
 	    # for n <- 1..2 do
-	    {:ok, worker_pid1} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1, visited_pid) end )
-	    {:ok, worker_pid2} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 2, visited_pid) end )
-	    {:ok, worker_pid3} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 3, visited_pid) end )
+	    {:ok, worker_pid1} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 1, visited_pid, queue_pid) end )
+	    {:ok, worker_pid2} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 2, visited_pid, queue_pid) end )
+	    {:ok, worker_pid3} = Task.start_link(fn -> Worker.process_urls(fetcher, host, 3, visited_pid, queue_pid) end )
 	    # end
 
 
 		Logger.debug "start link is #{inspect self()}"
 
 
-		Queue.enqueue(uri)
+		Queue.enqueue(queue_pid, uri)
 	    results = receive do
 			{:done, urls} -> urls
 		end
@@ -63,15 +63,15 @@ defmodule WorkHandler do
 	    
 	    # todo: is this really how to do it? supervisor instead?
 	    Visited.stop(visited_pid)
-	    Queue.stop()
+	    # Queue.stop()
 	    Logger.info "done killing, returning"
 	    results
 	end
 
 	# For workers
-	def request_job() do
+	def request_job(queue_pid) do
 		# Logger.debug "job requested"
-		job = Queue.dequeue() # blocks
+		job = Queue.dequeue(queue_pid) # blocks
 		job
 	end
 end
@@ -81,14 +81,14 @@ defmodule WorkHandler.Completions do
 	use GenServer
 
 	defmodule State do
-    	defstruct unfinished_jobs: 1, failures: %{}, max_count: nil, visited_pid: nil
+    	defstruct unfinished_jobs: 1, failures: %{}, max_count: nil, visited_pid: nil, queue_pid: nil
   	end
 
-	def start_link(max_count, visited_pid) do
+	def start_link(max_count, visited_pid, queue_pid) do
 		# {unfinished jobs, failure counts, max_count}
 		# todo: state should be a struct or something
-		Logger.warn("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
-		state = %State{max_count: max_count, visited_pid: visited_pid}
+		# Logger.warn("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
+		state = %State{max_count: max_count, visited_pid: visited_pid, queue_pid: queue_pid}
 		GenServer.start_link(WorkHandler.Completions, state, name: __MODULE__)
 	end
 
@@ -123,7 +123,7 @@ defmodule WorkHandler.Completions do
  		failures_for_uri = Map.get(old_state.failures, uri, 0)
  		if failures_for_uri < 3 do
  			Logger.debug("error, trying again.")
- 			Queue.enqueue(uri)
+ 			Queue.enqueue(old_state.queue_pid, uri)
 			{
 				:noreply,
 				# {unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1), max_count, visited_pid}
@@ -145,7 +145,7 @@ defmodule WorkHandler.Completions do
 
 		Visited.mark_visited(old_state.visited_pid, visited_uri)
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
-		Enum.map(new_uris, &Queue.enqueue/1)
+		Enum.map(new_uris, fn uri -> Queue.enqueue(old_state.queue_pid, uri) end)
 
 		# unfinished_jobs = unfinished_jobs + length(new_uris) - 1
  		new_state = %State{old_state | unfinished_jobs: 

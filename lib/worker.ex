@@ -1,11 +1,11 @@
 defmodule Worker do
   require Logger
 
-	def process_urls(fetcher, host, id, visited_pid) do
+	def process_urls(fetcher, host, id, visited_pid, queue_pid) do
 
     
     # Logger.info "worker boss #{id} with pid #{inspect self()} requesting job"
-    uri = WorkHandler.request_job()
+    uri = WorkHandler.request_job(queue_pid)
 
     Process.flag :trap_exit, true
     spawn_link (fn -> work(fetcher, host, uri, visited_pid) end)
@@ -26,7 +26,7 @@ defmodule Worker do
     end
 
     # IO.write(".")
-    process_urls(fetcher, host, id, visited_pid)
+    process_urls(fetcher, host, id, visited_pid, queue_pid)
   end
 
   def work(fetcher, host, uri, visited_pid) do
