@@ -27,16 +27,16 @@ defmodule WorkHandler do
 		# :timer.sleep(30)
 		results_pid = Results.start_link()
 
-		WorkHandler.Completions.start_link(max_count, visited_pid, queue_pid, results_pid)
+		completions_pid = WorkHandler.Completions.start_link(max_count, visited_pid, queue_pid, results_pid)
 
 		uri = URI.parse(first_url)
 	    host = uri.host
 
 	    # TODO: add back multiple workes
 	    # for n <- 1..2 do
-	    worker_pid1 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid)
-	    worker_pid2 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid)
-	    worker_pid3 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid)
+	    worker_pid1 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid)
+	    worker_pid2 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid)
+	    worker_pid3 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid)
 	    # end
 
 
@@ -92,23 +92,24 @@ defmodule WorkHandler.Completions do
 	def start_link(max_count, visited_pid, queue_pid, results_pid) do
 		# {unfinished jobs, failure counts, max_count}
 		# todo: state should be a struct or something
-		# Logger.warn("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
+		Logger.debug("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
 		state = %State{max_count: max_count, visited_pid: visited_pid, queue_pid: queue_pid, main_process: self(), results_pid: results_pid}
-		GenServer.start_link(WorkHandler.Completions, state, name: __MODULE__)
+		{:ok, pid} = GenServer.start_link(WorkHandler.Completions, state)
+		pid
 	end
 
 	### For workers ################
 
- 	def ignoring_job() do
- 		GenServer.cast(__MODULE__, {:ignoring_job})
+ 	def ignoring_job(pid) do
+ 		GenServer.cast(pid, {:ignoring_job})
  	end
 
- 	def error_in_job(uri) do
- 		GenServer.cast(__MODULE__, {:error_in_job, uri})
+ 	def error_in_job(pid, uri) do
+ 		GenServer.cast(pid, {:error_in_job, uri})
  	end
 
-	def complete_job(visited_uri, new_uris) do
-		GenServer.cast(__MODULE__, {:complete_job, visited_uri, new_uris})
+	def complete_job(pid, visited_uri, new_uris) do
+		GenServer.cast(pid, {:complete_job, visited_uri, new_uris})
 	end
 
  	### implemention ###############
