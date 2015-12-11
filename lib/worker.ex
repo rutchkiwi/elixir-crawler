@@ -2,11 +2,11 @@ defmodule Worker do
   require Logger
 
   defmodule Pids do
-    defstruct visited: nil, queue: nil, results: nil, completions: nil
+    defstruct visited: nil, queue: nil, completions: nil
   end
 
-  def start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid) do
-    pids = %Pids{visited: visited_pid, queue: queue_pid, results: results_pid, completions: completions_pid}
+  def start_link(fetcher, host, visited_pid, queue_pid, completions_pid) do
+    pids = %Pids{visited: visited_pid, queue: queue_pid, completions: completions_pid}
     {:ok, pid} = Task.start_link(fn -> Worker.process_urls(fetcher, host, pids) end )
     pid
   end
@@ -16,7 +16,7 @@ defmodule Worker do
     uri = WorkHandler.request_job(pids.queue)
 
     Process.flag :trap_exit, true
-    spawn_link (fn -> work(fetcher, host, uri, pids.visited, pids.results) end)
+    spawn_link (fn -> work(fetcher, host, uri, pids.visited) end)
     receive do
       # Uhhh a bit weird to trap exits like this
       {:EXIT, _child_pid, {:done, links}} ->
@@ -37,7 +37,7 @@ defmodule Worker do
     process_urls(fetcher, host, pids)
   end
 
-  def work(fetcher, host, uri, visited_pid, results_pid) do
+  def work(fetcher, host, uri, visited_pid) do
     if Visited.visited?(visited_pid, uri) do
       # Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
       Process.exit(self(), :ignoring)
@@ -56,7 +56,6 @@ defmodule Worker do
         Enum.map(&_normalize_uri(&1, host))
 
       # todo: seems like race conditions possible if report_visited_uri is too slow
-      Results.report_visited_uri(results_pid, uri)
       Process.exit(self(), {:done, links})
     end
   end

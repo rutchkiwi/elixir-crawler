@@ -15,8 +15,10 @@ defmodule WorkHandler do
 
 	def _start_and_crawl(max_count, first_url, fetcher) do
 		# TODO: when this is called, main process gets linked to all these children. This needs to run in it's own thread, so that it can be killed and it's children with it.
+		# TODO: Linking should be done somewhere else! these things are now linked to the main process
 		# TODO: does children get killed when parent dies?
 		Logger.info "crawler process going in #{inspect self()}"
+
 
 		visited_pid = Visited.start_link()
 		# Logger.info "started visited link #{inspect self()}"
@@ -34,9 +36,9 @@ defmodule WorkHandler do
 
 	    # TODO: add back multiple workes
 	    # for n <- 1..2 do
-	    worker_pid1 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid)
-	    worker_pid2 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid)
-	    worker_pid3 = Worker.start_link(fetcher, host, visited_pid, queue_pid, results_pid, completions_pid)
+	    worker_pid1 = Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
+	    worker_pid2 = Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
+	    worker_pid3 = Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
 	    # end
 
 
@@ -150,6 +152,8 @@ defmodule WorkHandler.Completions do
 		# {unfinished_jobs, failures, max_count, visited_pid} = state
 
 		Visited.mark_visited(old_state.visited_pid, visited_uri)
+	    Results.report_visited_uri(old_state.results_pid, visited_uri)
+
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, fn uri -> Queue.enqueue(old_state.queue_pid, uri) end)
 

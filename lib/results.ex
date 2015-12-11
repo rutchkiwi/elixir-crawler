@@ -8,7 +8,11 @@ defmodule Results do
 	end
 
 	def report_visited_uri(pid, uri) do
-		send(pid, {:visited, URI.to_string(uri)})
+		# Task.start(fn -> 
+				send(pid, {:visited, URI.to_string(uri)})
+		# 	end
+		# )
+		# :timer.sleep(20)
 	end
 
 	def get_all_results(pid) do
