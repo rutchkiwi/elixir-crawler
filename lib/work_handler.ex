@@ -53,7 +53,7 @@ defmodule WorkHandler do
 
 
 	    # Kill stuff so that it does not print errors during the shutdown process
-
+		# todo: killing can be omitted if we link from some supervisor instead of caller process.	 
 		pids = [
 			worker_pid1,
 			worker_pid2,
