@@ -27,7 +27,6 @@ defmodule WorkHandler do
 		uri = URI.parse(first_url)
 	    host = uri.host
 
-	    # TODO: add back multiple workes
 	    for _ <- 1..10 do
 		    Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
 	    end
@@ -97,7 +96,6 @@ defmodule WorkHandler.Completions do
  			Queue.enqueue(old_state.queue_pid, uri)
 			{
 				:noreply,
-				# {unfinished_jobs, Map.put(failures, uri, failures_for_uri + 1), max_count, visited_pid}
 				%State{old_state | failures: Map.put(old_state.failures, uri, failures_for_uri + 1)}
 			}
  		else
@@ -135,9 +133,6 @@ defmodule WorkHandler.Completions do
 
 			# We're done. knows too much
 			send(state.main_process, {:done, state.results})
-			# Short circuit genserver and die immidietly, so that we can't report doneness twice
-			Logger.debug "kill genserver workhandler #{inspect self()}"
-			Process.exit(self(), :normal)
 		end
 	end
 
