@@ -12,7 +12,6 @@ defmodule Worker do
   end
 
 	def process_urls(fetcher, host, pids) do
-    # Logger.info "worker boss #{id} with pid #{inspect self()} requesting job"
     uri = WorkHandler.request_job(pids.queue)
 
     Process.flag :trap_exit, true
@@ -42,7 +41,6 @@ defmodule Worker do
       # Logger.debug "ignoring uri #{uri.path} because it's already been visited/"
       Process.exit(self(), :ignoring)
     else
-      # Logger.debug "worker subprocess about to start on #{uri.host}#{uri.path}"
 
       responseInfo = fetcher.(URI.to_string(uri))
       body = case responseInfo do
@@ -55,7 +53,6 @@ defmodule Worker do
         Enum.map(&URI.parse/1) |>
         Enum.map(&_normalize_uri(&1, host))
 
-      # todo: seems like race conditions possible if report_visited_uri is too slow
       Process.exit(self(), {:done, links})
     end
   end
