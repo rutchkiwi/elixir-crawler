@@ -11,8 +11,8 @@ use Mix.Config
 # Sample configuration:
 #
     config :logger, :console,
-      # level: :info,
-      level: :warn,
+      level: :debug,
+      # level: :warn,
       format: "$time [$level] $message\n"
 
 # It is also possible to import configuration files, relative to this

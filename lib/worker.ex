@@ -15,24 +15,27 @@ defmodule Worker do
     uri = WorkHandler.request_job(pids.queue)
 
     Process.flag :trap_exit, true
-    spawn_link (fn -> work(fetcher, host, uri, pids.visited) end)
+    # TODO: should be a task
+    child_pid = spawn_link (fn -> work(fetcher, host, uri, pids.visited) end)
     receive do
       # Uhhh a bit weird to trap exits like this
-      {:EXIT, _child_pid, {:done, links}} ->
+      {:EXIT, child_pid, {:done, links}} ->
          WorkHandler.Completions.complete_job(pids.completions, uri, links)
-      {:EXIT, _child_pid, :ignoring} ->
+      {:EXIT, child_pid, :ignoring} ->
           WorkHandler.Completions.ignoring_job(pids.completions)
-      {:EXIT, _child_pid, :http_error} ->
+      {:EXIT, child_pid, :http_error} ->
           Logger.debug "handling well-behaved http error."
           WorkHandler.Completions.error_in_job(pids.completions, uri)
-      {:EXIT, _child_pid, error} ->
-          Logger.warn "Handling an error in worker subprocess: #{inspect error}"
+      {:EXIT, child_pid, :normal} ->
+          Logger.debug "normal exit: shutdown was triggered from parent process"
+      {:EXIT, child_pid, error} ->
+          Logger.warn "Handling an error in worker subprocess: #{inspect error}, #{Exception.format_exit(error)}"
          WorkHandler.Completions.error_in_job(pids.completions, uri)
       # todo!
       # after 10 -> :timeout
     end
 
-    # IO.write(".")
+    IO.write(".")
     process_urls(fetcher, host, pids)
   end
 

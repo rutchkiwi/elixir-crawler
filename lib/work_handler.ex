@@ -112,7 +112,7 @@ defmodule WorkHandler.Completions do
 	def handle_cast({:complete_job, visited_uri, new_uris}, old_state) do
 		Visited.mark_visited(old_state.visited_pid, visited_uri)
 
-		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
+		# Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
 		Enum.map(new_uris, fn uri -> Queue.enqueue(old_state.queue_pid, uri) end)
 
  		new_state = %State{old_state | unfinished_jobs: 
@@ -133,12 +133,16 @@ defmodule WorkHandler.Completions do
 
 			# We're done. knows too much
 			send(state.main_process, {:done, state.results})
+
+			# Short circuit genserver and die immidietly
+			Logger.debug "kill genserver workhandler #{inspect self()}"
+			Process.exit(self(), :normal)
 		end
 	end
 
-	defp prettyfy_list_of_uris(uris) do
-		Enum.map(uris, fn uri -> uri.path end) |> Enum.join(", ")
-	end
+	# defp prettyfy_list_of_uris(uris) do
+	# 	Enum.map(uris, fn uri -> uri.path end) |> Enum.join(", ")
+	# end
 end
 
 
