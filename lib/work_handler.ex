@@ -14,14 +14,11 @@ defmodule WorkHandler do
 	end
 
 	def _start_and_crawl(max_count, first_url, fetcher) do
-		# TODO: when this is called, main process gets linked to all these children. This needs to run in it's own thread, so that it can be killed and it's children with it.
-		# TODO: Linking should be done somewhere else! these things are now linked to the main process
-		# TODO: does children get killed when parent dies?
+		# TODO: this is kinda like a supervisor, should things be restartable?
+
 		Logger.info "crawler process going in #{inspect self()}"
 
-
 		visited_pid = Visited.start_link()
-		# Logger.info "started visited link #{inspect self()}"
 
 		queue_pid = Queue.start_link()
 
@@ -31,15 +28,11 @@ defmodule WorkHandler do
 	    host = uri.host
 
 	    # TODO: add back multiple workes
-	    # for n <- 1..2 do
-	    worker_pid1 = Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
-	    worker_pid2 = Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
-	    worker_pid3 = Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
-	    # end
-
+	    for _ <- 1..10 do
+		    Worker.start_link(fetcher, host, visited_pid, queue_pid, completions_pid)
+	    end
 
 		Logger.debug "start link is #{inspect self()}"
-
 
 		Queue.enqueue(queue_pid, uri)
 	    results = receive do
@@ -47,33 +40,11 @@ defmodule WorkHandler do
 		end
 		Logger.debug "results received"
 
-
-	    # Kill stuff so that it does not print errors during the shutdown process
-		# todo: killing can be omitted if we link from some supervisor instead of caller process.	 
-		pids = [
-			worker_pid1,
-			worker_pid2,
-			worker_pid3,
-
-			queue_pid,
-			visited_pid,
-			completions_pid,
-		]
-
-		Enum.map(pids, &Process.unlink/1)
-		Enum.map(pids, &(Process.exit(&1, :kill)))
-
-		Logger.debug "workers are now killed"
-	    
-	    # todo: is this really how to do it? supervisor instead?
-	    # Queue.stop()
-	    Logger.info "done killing, returning"
 	    results
 	end
 
 	# For workers
 	def request_job(queue_pid) do
-		# Logger.debug "job requested"
 		job = Queue.dequeue(queue_pid) # blocks
 		job
 	end
@@ -88,8 +59,6 @@ defmodule WorkHandler.Completions do
   	end
 
 	def start_link(max_count, visited_pid, queue_pid) do
-		# {unfinished jobs, failure counts, max_count}
-		# todo: state should be a struct or something
 		Logger.debug("starting workhandler.completions link with visited: #{inspect(visited_pid)}")
 		state = %State{max_count: max_count, visited_pid: visited_pid, queue_pid: queue_pid, main_process: self()}
 		{:ok, pid} = GenServer.start_link(WorkHandler.Completions, state)
@@ -122,8 +91,6 @@ defmodule WorkHandler.Completions do
  	end
 
  	def handle_cast({:error_in_job, uri}, old_state) do
- 		# {unfinished_jobs, failures, max_count, visited_pid} = state
-
  		failures_for_uri = Map.get(old_state.failures, uri, 0)
  		if failures_for_uri < 3 do
  			Logger.debug("error, trying again.")
@@ -145,8 +112,6 @@ defmodule WorkHandler.Completions do
  	end
 
 	def handle_cast({:complete_job, visited_uri, new_uris}, old_state) do
-		# {unfinished_jobs, failures, max_count, visited_pid} = state
-
 		Visited.mark_visited(old_state.visited_pid, visited_uri)
 
 		Logger.debug "job completion of #{visited_uri.path}. enqueing links: #{prettyfy_list_of_uris(new_uris)}."
@@ -170,7 +135,7 @@ defmodule WorkHandler.Completions do
 
 			# We're done. knows too much
 			send(state.main_process, {:done, state.results})
-			# Short circuit genserver and die immidietly
+			# Short circuit genserver and die immidietly, so that we can't report doneness twice
 			Logger.debug "kill genserver workhandler #{inspect self()}"
 			Process.exit(self(), :normal)
 		end
