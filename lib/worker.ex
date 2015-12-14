@@ -19,16 +19,16 @@ defmodule Worker do
     child_pid = spawn_link (fn -> work(fetcher, host, uri, pids.visited) end)
     receive do
       # Uhhh a bit weird to trap exits like this
-      {:EXIT, child_pid, {:done, links}} ->
+      {:EXIT, ^child_pid, {:done, links}} ->
          WorkHandler.Completions.complete_job(pids.completions, uri, links)
-      {:EXIT, child_pid, :ignoring} ->
+      {:EXIT, ^child_pid, :ignoring} ->
           WorkHandler.Completions.ignoring_job(pids.completions)
-      {:EXIT, child_pid, :http_error} ->
+      {:EXIT, ^child_pid, :http_error} ->
           Logger.debug "handling well-behaved http error."
           WorkHandler.Completions.error_in_job(pids.completions, uri)
-      {:EXIT, child_pid, :normal} ->
+      {:EXIT, ^child_pid, :normal} ->
           Logger.debug "normal exit: shutdown was triggered from parent process"
-      {:EXIT, child_pid, error} ->
+      {:EXIT, ^child_pid, error} ->
           Logger.warn "Handling an error in worker subprocess: #{inspect error}, #{Exception.format_exit(error)}"
          WorkHandler.Completions.error_in_job(pids.completions, uri)
       # todo!
