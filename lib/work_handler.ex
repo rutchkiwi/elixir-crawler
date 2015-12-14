@@ -10,7 +10,7 @@ defmodule WorkHandler do
 		Logger.info "about to start crawler thread"
 		main_task = Task.async(
 			WorkHandler, :_start_and_crawl, [max_count, first_url, fetcher])
-		Task.await(main_task)
+		Task.await(main_task, 3600000)
 	end
 
 	def _start_and_crawl(max_count, first_url, fetcher) do
